@@ -1,0 +1,28 @@
+# Project Configuration
+project:
+  name: "financial-risk-intelligence-platform"
+  version: "0.1.0"
+
+# Data paths
+data:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  train_transaction: "data/raw/train_transaction.csv"
+  train_identity: "data/raw/train_identity.csv"
+
+# Data processing
+processing:
+  test_size: 0.2
+  random_state: 42
+  target_column: "isFraud"
+
+# Model
+model:
+  name: "isolation_forest"
+  contamination: 0.035
+  random_state: 42
+
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
