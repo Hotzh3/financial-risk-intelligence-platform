@@ -6,3 +6,6 @@ __pycache__/
 data/raw/
 .kaggle/
 kaggle.json
+mlruns/
+mlflow.db
+models/*.pkl
