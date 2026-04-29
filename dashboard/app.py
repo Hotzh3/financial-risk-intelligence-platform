@@ -75,6 +75,74 @@ with col2:
 
 st.divider()
 
+# ── Alerts Panel ────────────────────────────────────────────────────────
+st.header("🚨 Alerts Panel")
+
+alerts_stats = None
+alerts_rows = []
+
+if st.button("Refresh Alerts", use_container_width=False):
+    st.rerun()
+
+try:
+    stats_response = requests.get(f"{API_URL}/api/v1/alerts/stats", timeout=3)
+    stats_response.raise_for_status()
+    alerts_stats = stats_response.json()
+
+    alerts_response = requests.get(f"{API_URL}/api/v1/alerts?limit=20", timeout=3)
+    alerts_response.raise_for_status()
+    alerts_rows = alerts_response.json().get("alerts", [])
+except Exception:
+    st.info("Alerts service not available yet. Showing fraud dashboard without alerts.")
+
+if alerts_stats is not None:
+    m1, m2, m3, m4, m5 = st.columns(5)
+    m1.metric("Total Alerts", alerts_stats.get("total_alerts", 0))
+    m2.metric("Low", alerts_stats.get("low", 0))
+    m3.metric("Medium", alerts_stats.get("medium", 0))
+    m4.metric("High", alerts_stats.get("high", 0))
+    m5.metric("Notified %", f"{alerts_stats.get('notified_pct', 0.0):.1f}%")
+
+    with st.expander("Threshold Configuration"):
+        current_threshold = st.slider(
+            "Alert threshold",
+            min_value=0.0,
+            max_value=1.0,
+            step=0.01,
+            value=0.70,
+        )
+        if st.button("Update threshold", key="update_threshold_btn"):
+            try:
+                update_res = requests.patch(
+                    f"{API_URL}/api/v1/alerts/threshold",
+                    json={"threshold": current_threshold},
+                    timeout=3,
+                )
+                update_res.raise_for_status()
+                st.success(f"Threshold updated to {update_res.json()['threshold']:.2f}")
+            except Exception as exc:
+                st.warning(f"Could not update threshold: {exc}")
+
+    if alerts_rows:
+        alerts_df = pd.DataFrame(alerts_rows)
+        alerts_df["severity_color"] = alerts_df["severity"].map(
+            {"LOW": "🟢 LOW", "MEDIUM": "🟡 MEDIUM", "HIGH": "🔴 HIGH"}
+        ).fillna(alerts_df["severity"])
+        display_columns = [
+            "timestamp",
+            "transaction_id",
+            "anomaly_score",
+            "severity_color",
+            "risk_level",
+            "amount",
+            "status",
+        ]
+        st.dataframe(alerts_df[display_columns], use_container_width=True, hide_index=True)
+    else:
+        st.caption("No alerts generated yet.")
+
+st.divider()
+
 # ── Live Prediction ───────────────────────────────────────────────────
 st.header("🔍 Live Transaction Scoring")
 

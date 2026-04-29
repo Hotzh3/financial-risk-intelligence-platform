@@ -3,9 +3,10 @@ Predictions router — scores a transaction for fraud.
 """
 
 import pickle
+import uuid
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from api.schemas.models import TransactionInput, PredictionOutput
 from src.utils.logger import get_logger
 
@@ -64,7 +65,7 @@ def compute_features(tx: TransactionInput) -> pd.DataFrame:
 
 
 @router.post("/predict", response_model=PredictionOutput)
-def predict(transaction: TransactionInput):
+def predict(transaction: TransactionInput, request: Request) -> PredictionOutput:
     """Score a single transaction for fraud risk."""
     if model is None:
         raise HTTPException(status_code=503, detail="Model not available")
@@ -83,11 +84,23 @@ def predict(transaction: TransactionInput):
         risk_level = "LOW"
         is_fraud = False
 
-    import uuid
+    transaction_id = str(uuid.uuid4())
+    alert_engine = request.app.state.alert_engine
+    alert = alert_engine.evaluate(
+        transaction_id=transaction_id,
+        anomaly_score=score_normalized,
+        payload={
+            **transaction.model_dump(),
+            "risk_level": risk_level,
+        },
+    )
+
     return PredictionOutput(
-        transaction_id=str(uuid.uuid4()),
+        transaction_id=transaction_id,
         anomaly_score=round(score_normalized, 4),
         risk_level=risk_level,
         is_fraud=is_fraud,
-        message=f"Transaction classified as {risk_level} risk"
+        message=f"Transaction classified as {risk_level} risk",
+        alert_generated=alert is not None,
+        alert_severity=(alert["severity"] if alert else None),
     )

@@ -3,7 +3,11 @@ __pycache__/
 .ipynb_checkpoints/
 .DS_Store
 *.pyc
+.pytest_cache/
+*.db
+alerts.db
 data/raw/
+data/processed/
 .kaggle/
 kaggle.json
 mlruns/
