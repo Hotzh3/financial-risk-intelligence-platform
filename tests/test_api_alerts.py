@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from api.main import app
@@ -64,3 +65,26 @@ def test_alerts_and_stats_endpoints() -> None:
         stats_body = stats_response.json()
         assert "total_alerts" in stats_body
         assert "notified_pct" in stats_body
+
+
+def test_predict_endpoint_rejects_invalid_payload() -> None:
+    """Prediction endpoint should return a validation error for bad payloads."""
+    invalid_payload = _sample_payload()
+    invalid_payload.pop("TransactionAmt")
+
+    with TestClient(app) as client:
+        response = client.post("/api/v1/predict", json=invalid_payload)
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["detail"]
+    assert any(error["loc"][-1] == "TransactionAmt" for error in body["detail"])
+
+
+@pytest.mark.parametrize("threshold", [-0.1, 1.1])
+def test_update_threshold_rejects_invalid_values(threshold: float) -> None:
+    """Threshold updates outside the accepted range should fail validation."""
+    with TestClient(app) as client:
+        response = client.patch("/api/v1/alerts/threshold", json={"threshold": threshold})
+
+    assert response.status_code == 422
