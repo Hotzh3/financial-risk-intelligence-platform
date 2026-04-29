@@ -21,8 +21,12 @@ class TransactionInput(BaseModel):
 
 
 class PredictionOutput(BaseModel):
+    """Prediction payload returned to dashboard and API clients."""
+
     transaction_id: str
     anomaly_score: float
     risk_level: str
     is_fraud: bool
     message: str
+    alert_generated: bool = False
+    alert_severity: str | None = None
