@@ -1,28 +1,171 @@
-# Project Configuration
 project:
   name: "financial-risk-intelligence-platform"
   version: "0.1.0"
+  description: "End-to-end financial fraud and risk intelligence platform"
+  author: "Jose"
+  random_state: 42
 
-# Data paths
+environment:
+  python_version: ">=3.10"
+
 data:
   raw_dir: "data/raw"
   processed_dir: "data/processed"
-  train_transaction: "data/raw/train_transaction.csv"
-  train_identity: "data/raw/train_identity.csv"
+  external_dir: "data/external"
 
-# Data processing
+  raw_files:
+    train_transaction: "data/raw/train_transaction.csv"
+    train_identity: "data/raw/train_identity.csv"
+    creditcard: "data/raw/creditcard.csv"
+    default_transactions: "data/raw/transactions.csv"
+
+  processed_files:
+    clean_transactions: "data/processed/transactions_clean.csv"
+    features: "data/processed/features.csv"
+    train_features: "data/processed/train_features.csv"
+    test_features: "data/processed/test_features.csv"
+
+schema:
+  possible_target_columns:
+    - "isFraud"
+    - "Class"
+
+  ieee_cis:
+    transaction_id: "TransactionID"
+    target_column: "isFraud"
+    amount_column: "TransactionAmt"
+    time_column: "TransactionDT"
+
+  creditcard:
+    target_column: "Class"
+    amount_column: "Amount"
+    time_column: "Time"
+
 processing:
   test_size: 0.2
+  validation_size: 0.2
   random_state: 42
-  target_column: "isFraud"
+  stratify: true
+  drop_duplicates: true
+  drop_columns: []
+  handle_missing_values: true
 
-# Model
-model:
-  name: "isolation_forest"
-  contamination: 0.035
-  random_state: 42
+  missing_values:
+    numeric_strategy: "median"
+    categorical_strategy: "Unknown"
 
-# Logging
+features:
+  numeric_features: "auto"
+  categorical_features: "auto"
+
+  scaling:
+    enabled: true
+    method: "standard"
+
+  encoding:
+    method: "one_hot"
+    handle_unknown: "ignore"
+
+  leakage_columns:
+    - "TransactionID"
+
+modeling:
+  task_type: "binary_classification"
+
+  baseline_model:
+    name: "logistic_regression"
+    enabled: true
+    params:
+      max_iter: 1000
+      class_weight: "balanced"
+      random_state: 42
+
+  random_forest:
+    params:
+      n_estimators: 300
+      max_depth: 12
+      min_samples_leaf: 2
+      class_weight: "balanced_subsample"
+      n_jobs: -1
+
+  anomaly_model:
+    name: "isolation_forest"
+    enabled: true
+    params:
+      contamination: 0.035
+      random_state: 42
+      n_estimators: 200
+
+evaluation:
+  primary_metric: "pr_auc"
+  metrics:
+    - "precision"
+    - "recall"
+    - "f1"
+    - "roc_auc"
+    - "pr_auc"
+    - "confusion_matrix"
+
+  threshold:
+    default: 0.5
+    high_risk: 0.8
+    medium_risk: 0.5
+    low_risk: 0.2
+
+artifacts:
+  dir: "artifacts"
+  models_dir: "artifacts/models"
+  preprocessors_dir: "artifacts/preprocessors"
+  reports_dir: "reports"
+
+  model_file: "artifacts/models/fraud_model.pkl"
+  preprocessor_file: "artifacts/preprocessors/preprocessor.pkl"
+  metrics_file: "reports/model_metrics.json"
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  version: "v1"
+
+  endpoints:
+    health: "/health"
+    predict: "/predict"
+    transactions: "/transactions"
+    alerts: "/alerts"
+
+dashboard:
+  framework: "streamlit"
+  port: 8501
+  title: "Financial Risk Intelligence Dashboard"
+
+alerts:
+  enabled: true
+
+  severity_thresholds:
+    low: 0.2
+    medium: 0.5
+    high: 0.8
+    critical: 0.95
+
+  channels:
+    email:
+      enabled: false
+    webhook:
+      enabled: false
+
+database:
+  development:
+    engine: "sqlite"
+    path: "data/processed/risk_platform.db"
+
+  production:
+    engine: "postgresql"
+    host: "${POSTGRES_HOST}"
+    port: 5432
+    database: "${POSTGRES_DB}"
+    user: "${POSTGRES_USER}"
+    password: "${POSTGRES_PASSWORD}"
+
 logging:
   level: "INFO"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
