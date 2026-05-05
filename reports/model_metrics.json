@@ -1,0 +1,22 @@
+{
+  "precision": 0.06983336790430754,
+  "recall": 0.7331236390031454,
+  "f1": 0.12751988552670343,
+  "roc_auc": 0.7711863729077912,
+  "pr_auc": 0.15337975921874852,
+  "confusion_matrix": [
+    [
+      73616,
+      40359
+    ],
+    [
+      1103,
+      3030
+    ]
+  ],
+  "model_name": "logistic_regression",
+  "target_column": "isFraud",
+  "threshold": 0.5,
+  "n_train": 472432,
+  "n_test": 118108
+}

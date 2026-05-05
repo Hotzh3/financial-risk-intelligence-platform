@@ -19,3 +19,6 @@ kaggle.json
 mlruns/
 mlflow.db
 models/*.pkl
+artifacts/models/*.pkl
+artifacts/models/*.json
+artifacts/preprocessors/*.pkl

@@ -147,6 +147,31 @@ Notebook:
 jupyter notebook notebooks/01_eda.ipynb
 ```
 
+## Phase 2 Workflow (Feature Engineering + Baseline Model)
+
+This phase builds reproducible model-ready features, trains a baseline fraud model,
+and evaluates performance using fraud-focused metrics.
+
+Run scripts in order:
+
+```bash
+python3 -m src.features.build_features
+python3 -m src.models.train
+```
+
+Key outputs:
+
+- Feature table: `data/processed/features.csv`
+- Trained model: `artifacts/models/fraud_model.pkl`
+- Optional anomaly model: `artifacts/models/isolation_forest.pkl`
+- Metrics report: `reports/model_metrics.json`
+
+Use the prediction module for inference on new rows:
+
+```bash
+python3 -m src.models.predict
+```
+
 ## Getting Started
 
 ```bash
