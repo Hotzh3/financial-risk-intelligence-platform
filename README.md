@@ -115,6 +115,38 @@ data/
     └── train_clean.parquet
 ```
 
+For the Phase 1 pipeline in this repository, place your main training CSV inside
+`data/raw/` using one of these names:
+
+- `transactions.csv` (recommended default for this project)
+- `creditcard.csv`
+- `train_transaction.csv`
+
+The loader in `src/data/load_data.py` will auto-detect one of those files.
+
+## Phase 1 Workflow (Data + EDA)
+
+Current focus is building a reliable data foundation before modeling:
+
+1. Load raw data from `data/raw/`
+2. Validate schema and key columns
+3. Clean duplicates, data types, and missing values
+4. Save clean output to `data/processed/transactions_clean.csv`
+5. Analyze distributions and class imbalance in `notebooks/01_eda.ipynb`
+
+Run scripts:
+
+```bash
+python -m src.data.load_data
+python -m src.data.clean_data
+```
+
+Notebook:
+
+```bash
+jupyter notebook notebooks/01_eda.ipynb
+```
+
 ## Getting Started
 
 ```bash

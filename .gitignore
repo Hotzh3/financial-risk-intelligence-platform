@@ -8,6 +8,12 @@ __pycache__/
 alerts.db
 data/raw/
 data/processed/
+data/external/
+data/**/*.parquet
+data/**/*.feather
+data/**/*.pkl
+data/**/*.zip
+data/**/*.gz
 .kaggle/
 kaggle.json
 mlruns/
