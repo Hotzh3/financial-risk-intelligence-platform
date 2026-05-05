@@ -1,108 +1,113 @@
-"""
-Data loader for the Financial Risk Intelligence Platform.
-Handles ingestion and merging of IEEE-CIS Fraud Detection dataset.
-"""
+"""Utilities to load raw transaction datasets for Phase 1 (Data + EDA)."""
+
+from pathlib import Path
+from typing import Iterable
 
 import pandas as pd
-import yaml
-from pathlib import Path
+
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-
-def load_config(config_path: str = "config/config.yaml") -> dict:
-    """
-    Load project configuration from YAML file.
-
-    Args:
-        config_path: Path to config file
-
-    Returns:
-        Configuration dictionary
-    """
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
-    logger.info(f"Config loaded from {config_path}")
-    return config
+RAW_DATA_DIR = Path("data/raw")
+DEFAULT_FILE_NAME = "transactions.csv"
+DEFAULT_CANDIDATE_FILES = (
+    "transactions.csv",
+    "creditcard.csv",
+    "train_transaction.csv",
+)
+DEFAULT_REQUIRED_COLUMN_GROUPS = (
+    ("Amount", "Time"),
+    ("TransactionAmt", "TransactionDT"),
+)
+TARGET_CANDIDATES = ("isFraud", "Class", "fraud", "target")
 
 
-def load_transactions(file_path: str) -> pd.DataFrame:
-    """
-    Load transaction data from CSV.
+def _resolve_raw_file(file_name: str | None = None) -> Path:
+    """Resolve which CSV should be loaded from data/raw."""
+    if file_name:
+        file_path = RAW_DATA_DIR / file_name
+        if not file_path.exists():
+            raise FileNotFoundError(
+                f"Raw data file not found: '{file_path}'. "
+                "Place your CSV inside data/raw/."
+            )
+        return file_path
 
-    Args:
-        file_path: Path to train_transaction.csv
+    for candidate in DEFAULT_CANDIDATE_FILES:
+        candidate_path = RAW_DATA_DIR / candidate
+        if candidate_path.exists():
+            return candidate_path
 
-    Returns:
-        DataFrame with transaction data
-    """
-    logger.info(f"Loading transactions from {file_path}...")
-    df = pd.read_csv(file_path)
-    logger.info(f"Transactions loaded: {df.shape[0]:,} rows x {df.shape[1]} columns")
-    return df
-
-
-def load_identity(file_path: str) -> pd.DataFrame:
-    """
-    Load identity data from CSV.
-
-    Args:
-        file_path: Path to train_identity.csv
-
-    Returns:
-        DataFrame with identity data
-    """
-    logger.info(f"Loading identity data from {file_path}...")
-    df = pd.read_csv(file_path)
-    logger.info(f"Identity loaded: {df.shape[0]:,} rows x {df.shape[1]} columns")
-    return df
+    available_csv = sorted(path.name for path in RAW_DATA_DIR.glob("*.csv"))
+    raise FileNotFoundError(
+        "No dataset CSV found in data/raw/. "
+        f"Expected one of {DEFAULT_CANDIDATE_FILES} or pass file_name explicitly. "
+        f"Available CSV files: {available_csv if available_csv else 'none'}."
+    )
 
 
-def merge_datasets(
-    transactions: pd.DataFrame,
-    identity: pd.DataFrame,
+def _validate_columns(
+    df: pd.DataFrame,
+    required_columns: Iterable[str] | None = None,
+) -> None:
+    """Validate key dataset columns for Phase 1 checks."""
+    if df.empty:
+        raise ValueError("Dataset is empty. Verify the raw CSV content.")
+
+    if required_columns:
+        missing = [col for col in required_columns if col not in df.columns]
+        if missing:
+            raise ValueError(f"Missing required columns: {missing}")
+        return
+
+    has_target = any(col in df.columns for col in TARGET_CANDIDATES)
+    if not has_target:
+        raise ValueError(
+            "Target column not found. Expected one of: "
+            f"{list(TARGET_CANDIDATES)}."
+        )
+
+    has_minimum_structure = any(
+        all(column in df.columns for column in group)
+        for group in DEFAULT_REQUIRED_COLUMN_GROUPS
+    )
+    if not has_minimum_structure:
+        raise ValueError(
+            "Dataset does not match expected fraud schema. Expected one of these "
+            "column groups: "
+            f"{[list(group) for group in DEFAULT_REQUIRED_COLUMN_GROUPS]}."
+        )
+
+
+def load_raw_data(
+    file_name: str | None = None,
+    required_columns: Iterable[str] | None = None,
 ) -> pd.DataFrame:
     """
-    Merge transaction and identity datasets on TransactionID.
-    Uses left join to keep all transactions (not all have identity data).
+    Load raw fraud data from data/raw and validate key columns.
 
     Args:
-        transactions: Transaction DataFrame
-        identity: Identity DataFrame
+        file_name: CSV name inside data/raw/. If None, uses known defaults.
+        required_columns: Optional exact required columns to enforce.
 
     Returns:
-        Merged DataFrame
+        Pandas DataFrame with raw transactions.
     """
-    logger.info("Merging transactions with identity data...")
-    df = transactions.merge(identity, on="TransactionID", how="left")
-    logger.info(f"Merged dataset: {df.shape[0]:,} rows x {df.shape[1]} columns")
-    match_rate = (df["id_01"].notna().sum() / len(df)) * 100
-    logger.info(f"Identity match rate: {match_rate:.1f}%")
+    file_path = _resolve_raw_file(file_name=file_name)
+    logger.info(f"Loading raw data from {file_path}")
+    df = pd.read_csv(file_path)
+    _validate_columns(df, required_columns=required_columns)
+    logger.info(f"Loaded raw data: {df.shape[0]:,} rows x {df.shape[1]} columns")
     return df
 
 
-def load_data(config_path: str = "config/config.yaml") -> pd.DataFrame:
-    """
-    Main function to load and merge all data.
-
-    Args:
-        config_path: Path to config file
-
-    Returns:
-        Complete merged DataFrame ready for processing
-    """
-    config = load_config(config_path)
-
-    transactions = load_transactions(config["data"]["train_transaction"])
-    identity = load_identity(config["data"]["train_identity"])
-    df = merge_datasets(transactions, identity)
-
-    return df
+def load_data(file_name: str | None = None) -> pd.DataFrame:
+    """Backward-compatible alias for existing imports."""
+    return load_raw_data(file_name=file_name)
 
 
 if __name__ == "__main__":
-    df = load_data()
-    print(f"\nFinal dataset shape: {df.shape}")
-    print(f"Fraud rate: {df['isFraud'].mean():.2%}")
-    print(f"\nFirst 5 rows:\n{df.head()}")
+    dataset = load_raw_data()
+    print(f"Raw dataset shape: {dataset.shape}")
+    print(f"Columns ({len(dataset.columns)}): {list(dataset.columns)}")
