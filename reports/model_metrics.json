@@ -1,0 +1,37 @@
+{
+  "precision": 0.1304232100079851,
+  "recall": 0.7,
+  "f1": 0.2198788422705856,
+  "roc_auc": 0.8487831236121391,
+  "pr_auc": 0.39958692930243284,
+  "confusion_matrix": [
+    [
+      16033,
+      3267
+    ],
+    [
+      210,
+      490
+    ]
+  ],
+  "model_name": "logistic_regression",
+  "target_column": "isFraud",
+  "threshold": 0.5,
+  "input_features": 392,
+  "n_train": 80000,
+  "n_test": 20000,
+  "train_shape": [
+    80000,
+    392
+  ],
+  "test_shape": [
+    20000,
+    392
+  ],
+  "training_data_mode": "sampled",
+  "features_rows_before_sample": 590540,
+  "sample_size_config": 100000,
+  "sample_size_effective": 100000,
+  "fraud_rate_before_sample": 0.03499000914417313,
+  "fraud_rate_after_sample": 0.03499
+}

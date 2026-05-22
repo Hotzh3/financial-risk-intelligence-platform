@@ -71,12 +71,17 @@ features:
 
 modeling:
   task_type: "binary_classification"
+  # Development: set to an integer (e.g. 100000) for stratified subsample after loading features.
+  # Preserves fraud ratio. Use null for full-dataset training.
+  sample_size: 100000
 
   baseline_model:
     name: "logistic_regression"
     enabled: true
     params:
-      max_iter: 1000
+      solver: "saga"
+      max_iter: 3000
+      C: 1.0
       class_weight: "balanced"
       random_state: 42
 
