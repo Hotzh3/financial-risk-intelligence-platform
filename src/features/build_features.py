@@ -1,4 +1,4 @@
-"""Build reproducible modeling features for Phase 2."""
+"""Build leak-safe modeling table for Phase 2/2.5."""
 
 from __future__ import annotations
 
@@ -41,17 +41,13 @@ def load_clean_data(config: dict[str, Any]) -> pd.DataFrame:
     return pd.read_csv(clean_path)
 
 
-def _is_low_cardinality(series: pd.Series, max_cardinality: int = 30) -> bool:
-    return series.nunique(dropna=True) <= max_cardinality
-
-
-def build_features(df: pd.DataFrame, config: dict[str, Any]) -> tuple[pd.DataFrame, str]:
+def build_features(df: pd.DataFrame, config: dict[str, Any]) -> tuple[pd.DataFrame, str, list[str]]:
     """
-    Build deterministic feature table.
+    Build deterministic, leak-safe feature table before model preprocessing.
 
     Leakage prevention:
     - Drops configured identifier columns (for example `TransactionID`)
-    - Never uses target-derived aggregations
+    - Ensures target is removed from X
     """
     target_col = detect_target_column(df, config)
     leakage_columns = set(config["features"].get("leakage_columns", []))
@@ -61,42 +57,23 @@ def build_features(df: pd.DataFrame, config: dict[str, Any]) -> tuple[pd.DataFra
     X = df.drop(columns=[col for col in excluded if col in df.columns]).copy()
     y = df[target_col].copy()
 
-    for column in X.columns:
-        if pd.api.types.is_numeric_dtype(X[column]):
-            X[column] = pd.to_numeric(X[column], errors="coerce")
-            X[column] = X[column].fillna(X[column].median())
-        else:
-            X[column] = X[column].astype(str).fillna("Unknown")
-
-    categorical_columns = [
-        column
-        for column in X.select_dtypes(include=["object"]).columns
-        if _is_low_cardinality(X[column], max_cardinality=30)
-    ]
-    high_cardinality_columns = [
-        column
-        for column in X.select_dtypes(include=["object"]).columns
-        if column not in categorical_columns
-    ]
-
-    freq_encoded_columns: dict[str, pd.Series] = {}
-    for column in high_cardinality_columns:
-        freq_map = X[column].value_counts(normalize=True)
-        freq_encoded_columns[f"{column}_freq"] = X[column].map(freq_map).fillna(0.0)
-
-    if high_cardinality_columns:
-        X = X.drop(columns=high_cardinality_columns)
-        X = pd.concat([X, pd.DataFrame(freq_encoded_columns, index=X.index)], axis=1)
-
-    X = pd.get_dummies(X, columns=categorical_columns, drop_first=False)
-    X = X.fillna(0)
+    # Keep raw-ish columns here; train pipeline performs imputing/encoding/scaling.
+    for column in X.select_dtypes(include=["object"]).columns:
+        X[column] = X[column].astype("string")
 
     features_df = X.copy()
-    features_df[target_col] = y
-    return features_df, target_col
+    features_df[target_col] = pd.to_numeric(y, errors="coerce")
+    features_df = features_df.dropna(subset=[target_col]).copy()
+    features_df[target_col] = features_df[target_col].astype(int)
+    return features_df, target_col, sorted(excluded)
 
 
-def save_features(features_df: pd.DataFrame, target_col: str, config: dict[str, Any]) -> Path:
+def save_features(
+    features_df: pd.DataFrame,
+    target_col: str,
+    excluded_columns: list[str],
+    config: dict[str, Any],
+) -> Path:
     """Save built features and artifact metadata."""
     features_path = Path(config["data"]["processed_files"]["features"])
     features_path.parent.mkdir(parents=True, exist_ok=True)
@@ -106,7 +83,14 @@ def save_features(features_df: pd.DataFrame, target_col: str, config: dict[str, 
     columns_artifact.parent.mkdir(parents=True, exist_ok=True)
     feature_columns = [column for column in features_df.columns if column != target_col]
     columns_artifact.write_text(
-        json.dumps({"target_column": target_col, "feature_columns": feature_columns}, indent=2),
+        json.dumps(
+            {
+                "target_column": target_col,
+                "feature_columns": feature_columns,
+                "excluded_columns": excluded_columns,
+            },
+            indent=2,
+        ),
         encoding="utf-8",
     )
 
@@ -119,11 +103,12 @@ def run_build_features(config_path: str | Path = DEFAULT_CONFIG_PATH) -> Path:
     """Run end-to-end feature build."""
     config = load_config(config_path)
     clean_df = load_clean_data(config)
-    features_df, target_col = build_features(clean_df, config)
-    output_path = save_features(features_df, target_col, config)
+    features_df, target_col, excluded_columns = build_features(clean_df, config)
+    output_path = save_features(features_df, target_col, excluded_columns, config)
     print(f"Input clean shape: {clean_df.shape}")
     print(f"Features shape: {features_df.shape}")
     print(f"Target column: {target_col}")
+    print(f"Excluded columns (anti-leakage): {excluded_columns}")
     print(f"Saved features: {output_path}")
     return output_path
 

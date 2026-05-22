@@ -7,6 +7,7 @@ import pickle
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import yaml
 
@@ -32,17 +33,21 @@ def _load_feature_columns(path: str | Path) -> list[str]:
 
 
 def _prepare_input(data: pd.DataFrame, feature_columns: list[str]) -> pd.DataFrame:
-    processed = data.copy()
-
-    for column in processed.columns:
-        if pd.api.types.is_numeric_dtype(processed[column]):
-            processed[column] = pd.to_numeric(processed[column], errors="coerce").fillna(0)
-        else:
-            processed[column] = processed[column].astype(str).fillna("Unknown")
-
-    processed = pd.get_dummies(processed, drop_first=False)
-    aligned = processed.reindex(columns=feature_columns, fill_value=0)
+    """Align incoming dataframe to training feature schema before pipeline transform."""
+    aligned = data.copy()
+    missing_columns = [column for column in feature_columns if column not in aligned.columns]
+    if missing_columns:
+        missing_df = pd.DataFrame(np.nan, index=aligned.index, columns=missing_columns)
+        aligned = pd.concat([aligned, missing_df], axis=1)
+    aligned = aligned.reindex(columns=feature_columns)
     return aligned
+
+
+def _prepare_legacy_input(data: pd.DataFrame, feature_columns: list[str]) -> pd.DataFrame:
+    """Backwards-compatible path for older non-pipeline saved models."""
+    transformed = pd.get_dummies(data.copy(), drop_first=False)
+    transformed = transformed.reindex(columns=feature_columns, fill_value=0)
+    return transformed
 
 
 def predict_risk(
@@ -57,8 +62,17 @@ def predict_risk(
     )
     threshold = float(config["evaluation"]["threshold"]["default"])
 
-    X = _prepare_input(data, feature_columns=feature_columns)
-    risk_scores = model.predict_proba(X)[:, 1]
+    if hasattr(model, "named_steps") and "preprocessor" in model.named_steps:
+        X = _prepare_input(data, feature_columns=feature_columns)
+    else:
+        X = _prepare_legacy_input(data, feature_columns=feature_columns)
+    try:
+        risk_scores = model.predict_proba(X)[:, 1]
+    except ValueError as error:
+        raise RuntimeError(
+            "Loaded model is incompatible with current feature metadata. "
+            "Re-run `python3 -m src.models.train` after rebuilding features."
+        ) from error
     predicted_label = (risk_scores >= threshold).astype(int)
 
     output = data.copy()

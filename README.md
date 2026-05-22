@@ -172,6 +172,24 @@ Use the prediction module for inference on new rows:
 python3 -m src.models.predict
 ```
 
+## Phase 2.5 Workflow (Model Quality Hardening)
+
+Hardening adds reproducible preprocessing and stronger artifact consistency:
+
+- Train-time preprocessing is handled with `sklearn` `Pipeline` + `ColumnTransformer`
+- Numeric features are imputed and scaled (`StandardScaler`) before Logistic Regression
+- Categorical features are imputed and one-hot encoded with `handle_unknown=ignore`
+- Anti-leakage exclusions are applied in feature build (`TransactionID`, target, configured drops)
+
+For faster local iteration on large IEEE-CIS runs, set `modeling.sample_size` in `config/config.yaml` (for example `100000`). The trainer stratifies by the fraud label so the positive rate matches the full feature table before train/test split. Use `null` for full-data training. Logs and `reports/model_metrics.json` record `training_data_mode` (`full` vs `sampled`) and related fields.
+
+Artifacts produced for reproducibility:
+
+- `artifacts/models/fraud_model.pkl` (pipeline with preprocessing + model)
+- `artifacts/preprocessors/preprocessor.pkl`
+- `artifacts/models/feature_columns.json`
+- `reports/model_metrics.json` (includes model name, threshold, and train/test shapes)
+
 ## Getting Started
 
 ```bash
