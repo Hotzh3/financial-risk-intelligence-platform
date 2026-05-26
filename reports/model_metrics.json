@@ -28,10 +28,18 @@
     20000,
     392
   ],
+  "fraud_rate_train": 0.0349875,
+  "fraud_rate_test": 0.035,
+  "threshold_report_file": "reports/threshold_report.json",
+  "run_id": "run_20260522T160011Z",
+  "metadata_file": "artifacts/models/run_metadata.json",
   "training_data_mode": "sampled",
   "features_rows_before_sample": 590540,
   "sample_size_config": 100000,
   "sample_size_effective": 100000,
   "fraud_rate_before_sample": 0.03499000914417313,
-  "fraud_rate_after_sample": 0.03499
+  "fraud_rate_after_sample": 0.03499,
+  "split_strategy": "stratified_random",
+  "time_column": null,
+  "train_quantile": null
 }

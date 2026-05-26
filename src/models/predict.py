@@ -32,6 +32,20 @@ def _load_feature_columns(path: str | Path) -> list[str]:
     return payload["feature_columns"]
 
 
+def _load_run_metadata(path: str | Path) -> dict[str, Any]:
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def _ensure_artifacts_exist(*paths: str | Path) -> None:
+    missing = [str(path) for path in paths if not Path(path).exists()]
+    if missing:
+        missing_list = ", ".join(missing)
+        raise FileNotFoundError(
+            f"Missing required artifacts: {missing_list}. "
+            "Run `python3 -m src.models.train` after building features."
+        )
+
+
 def _prepare_input(data: pd.DataFrame, feature_columns: list[str]) -> pd.DataFrame:
     """Align incoming dataframe to training feature schema before pipeline transform."""
     aligned = data.copy()
@@ -56,10 +70,21 @@ def predict_risk(
 ) -> pd.DataFrame:
     """Return risk score and predicted label for incoming rows."""
     config = load_config(config_path)
-    model = _load_model(config["artifacts"]["model_file"])
-    feature_columns = _load_feature_columns(
-        Path(config["artifacts"]["models_dir"]) / "feature_columns.json"
-    )
+    model_path = Path(config["artifacts"]["model_file"])
+    feature_columns_path = Path(config["artifacts"]["models_dir"]) / "feature_columns.json"
+    run_metadata_path = Path(config["artifacts"]["models_dir"]) / "run_metadata.json"
+    _ensure_artifacts_exist(model_path, feature_columns_path, run_metadata_path)
+
+    model = _load_model(model_path)
+    feature_columns = _load_feature_columns(feature_columns_path)
+    run_metadata = _load_run_metadata(run_metadata_path)
+    metadata_feature_columns = run_metadata.get("feature_columns", [])
+    if feature_columns != metadata_feature_columns:
+        raise RuntimeError(
+            "Artifact mismatch: feature_columns.json does not match run_metadata.json. "
+            "Re-run `python3 -m src.models.train` to regenerate consistent artifacts."
+        )
+
     threshold = float(config["evaluation"]["threshold"]["default"])
 
     if hasattr(model, "named_steps") and "preprocessor" in model.named_steps:

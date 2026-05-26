@@ -74,6 +74,10 @@ modeling:
   # Development: set to an integer (e.g. 100000) for stratified subsample after loading features.
   # Preserves fraud ratio. Use null for full-dataset training.
   sample_size: 100000
+  split_strategy: "stratified_random"
+  temporal_split:
+    time_column: "TransactionDT"
+    train_quantile: 0.8
 
   baseline_model:
     name: "logistic_regression"

@@ -183,11 +183,20 @@ Hardening adds reproducible preprocessing and stronger artifact consistency:
 
 For faster local iteration on large IEEE-CIS runs, set `modeling.sample_size` in `config/config.yaml` (for example `100000`). The trainer stratifies by the fraud label so the positive rate matches the full feature table before train/test split. Use `null` for full-data training. Logs and `reports/model_metrics.json` record `training_data_mode` (`full` vs `sampled`) and related fields.
 
+Split strategy is config-driven:
+
+- `modeling.split_strategy: "stratified_random"` (default, class-stratified split)
+- `modeling.split_strategy: "temporal"` (orders by `TransactionDT` and splits by `modeling.temporal_split.train_quantile`)
+
+Operational threshold analysis is generated on every training run in `reports/threshold_report.json`, including fixed threshold points and top-k alert volumes (`alerts_per_10k`) to support review-capacity decisions.
+
 Artifacts produced for reproducibility:
 
 - `artifacts/models/fraud_model.pkl` (pipeline with preprocessing + model)
 - `artifacts/preprocessors/preprocessor.pkl`
 - `artifacts/models/feature_columns.json`
+- `artifacts/models/run_metadata.json` (run id, config/data fingerprints, feature schema, split/sample metadata, versions)
+- `reports/threshold_report.json` (precision/recall/alerts tradeoffs by threshold)
 - `reports/model_metrics.json` (includes model name, threshold, and train/test shapes)
 
 ## Getting Started
