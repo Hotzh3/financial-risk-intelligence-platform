@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import pickle
 from pathlib import Path
 from typing import Any
@@ -16,7 +17,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-from src.models.evaluate import evaluate_classification, save_metrics
+from src.models.artifacts import build_run_metadata, stable_json_fingerprint
+from src.models.evaluate import (
+    build_threshold_report,
+    evaluate_classification,
+    save_metrics,
+    save_threshold_report,
+)
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -26,7 +33,28 @@ DEFAULT_CONFIG_PATH = Path("config/config.yaml")
 
 def load_config(config_path: str | Path = DEFAULT_CONFIG_PATH) -> dict[str, Any]:
     with open(config_path, "r", encoding="utf-8") as file:
-        return yaml.safe_load(file)
+        config = yaml.safe_load(file)
+
+    def _ensure_path(path: tuple[str, ...]) -> None:
+        cursor: Any = config
+        for key in path:
+            if not isinstance(cursor, dict) or key not in cursor:
+                raise ValueError(f"Missing config path: {'.'.join(path)}")
+            cursor = cursor[key]
+
+    required_paths = (
+        ("data", "processed_files", "features"),
+        ("artifacts", "model_file"),
+        ("artifacts", "preprocessor_file"),
+        ("artifacts", "metrics_file"),
+    )
+    for path in required_paths:
+        _ensure_path(path)
+
+    split_strategy = config.get("modeling", {}).get("split_strategy", "stratified_random")
+    if split_strategy not in {"stratified_random", "temporal"}:
+        raise ValueError("modeling.split_strategy must be one of: stratified_random, temporal")
+    return config
 
 
 def load_features(config: dict[str, Any]) -> tuple[pd.DataFrame, pd.Series, str]:
@@ -45,6 +73,57 @@ def load_features(config: dict[str, Any]) -> tuple[pd.DataFrame, pd.Series, str]
     X = df.drop(columns=[target_col]).copy()
     y = df[target_col].astype(int).copy()
     return X, y, target_col
+
+
+def split_data(
+    X: pd.DataFrame,
+    y: pd.Series,
+    config: dict[str, Any],
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, dict[str, Any]]:
+    """Split train/test using strategy from config (random stratified or temporal)."""
+    split_strategy = config.get("modeling", {}).get("split_strategy", "stratified_random")
+    test_size = float(config["processing"]["test_size"])
+    random_state = int(config["processing"]["random_state"])
+
+    if split_strategy == "temporal":
+        temporal_cfg = config.get("modeling", {}).get("temporal_split", {})
+        time_column = temporal_cfg.get("time_column", config["schema"]["ieee_cis"]["time_column"])
+        train_quantile = float(temporal_cfg.get("train_quantile", 0.8))
+        if time_column not in X.columns:
+            raise ValueError(
+                f"Temporal split requested but column '{time_column}' is missing from features."
+            )
+        if not 0.5 <= train_quantile < 1.0:
+            raise ValueError("modeling.temporal_split.train_quantile must be in [0.5, 1.0).")
+        ordered = X.assign(__target=y).sort_values(time_column)
+        cutoff_idx = int(len(ordered) * train_quantile)
+        train_df = ordered.iloc[:cutoff_idx]
+        test_df = ordered.iloc[cutoff_idx:]
+        X_train = train_df.drop(columns=["__target"])
+        X_test = test_df.drop(columns=["__target"])
+        y_train = train_df["__target"].astype(int)
+        y_test = test_df["__target"].astype(int)
+        split_meta = {
+            "split_strategy": "temporal",
+            "time_column": time_column,
+            "train_quantile": train_quantile,
+        }
+        return X_train, X_test, y_train, y_test, split_meta
+
+    stratify_target = y if config["processing"]["stratify"] else None
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=test_size,
+        random_state=random_state,
+        stratify=stratify_target,
+    )
+    split_meta = {
+        "split_strategy": "stratified_random",
+        "time_column": None,
+        "train_quantile": None,
+    }
+    return X_train, X_test, y_train, y_test, split_meta
 
 
 def maybe_stratified_sample(
@@ -181,18 +260,7 @@ def run_training(config_path: str | Path = DEFAULT_CONFIG_PATH) -> dict[str, Any
     config = load_config(config_path)
     X, y, target_col = load_features(config)
     X, y, sample_meta = maybe_stratified_sample(X, y, config)
-
-    test_size = config["processing"]["test_size"]
-    random_state = config["processing"]["random_state"]
-    stratify_target = y if config["processing"]["stratify"] else None
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y,
-        test_size=test_size,
-        random_state=random_state,
-        stratify=stratify_target,
-    )
+    X_train, X_test, y_train, y_test, split_meta = split_data(X, y, config)
 
     preprocessor = build_preprocessor(X_train, config)
     model = get_baseline_model(config)
@@ -207,8 +275,31 @@ def run_training(config_path: str | Path = DEFAULT_CONFIG_PATH) -> dict[str, Any
     threshold = float(config["evaluation"]["threshold"]["default"])
     y_score = pipeline.predict_proba(X_test)[:, 1]
     y_pred = (y_score >= threshold).astype(int)
+    threshold_report = build_threshold_report(y_test, y_score)
+    save_threshold_report(threshold_report, config)
 
     metrics = evaluate_classification(y_test, y_pred, y_score)
+    features_path = Path(config["data"]["processed_files"]["features"])
+    feature_columns = X_train.columns.tolist()
+    run_metadata = build_run_metadata(
+        config_path=config_path,
+        features_path=features_path,
+        target_column=target_col,
+        feature_columns=feature_columns,
+        n_rows_total=len(X),
+        n_train=len(X_train),
+        n_test=len(X_test),
+        fraud_rate_full=float(y.mean()),
+        fraud_rate_train=float(y_train.mean()),
+        fraud_rate_test=float(y_test.mean()),
+        sample_size_config=sample_meta.get("sample_size_config"),
+        sample_size_effective=sample_meta.get("sample_size_effective"),
+        split_strategy=split_meta["split_strategy"],
+    )
+    run_metadata["feature_columns_fingerprint"] = stable_json_fingerprint(
+        {"feature_columns": feature_columns}
+    )
+
     metrics.update(
         {
             "model_name": config["modeling"]["baseline_model"]["name"],
@@ -219,14 +310,22 @@ def run_training(config_path: str | Path = DEFAULT_CONFIG_PATH) -> dict[str, Any
             "n_test": int(len(X_test)),
             "train_shape": [int(X_train.shape[0]), int(X_train.shape[1])],
             "test_shape": [int(X_test.shape[0]), int(X_test.shape[1])],
+            "fraud_rate_train": float(y_train.mean()),
+            "fraud_rate_test": float(y_test.mean()),
+            "threshold_report_file": "reports/threshold_report.json",
+            "run_id": run_metadata["run_id"],
+            "metadata_file": "artifacts/models/run_metadata.json",
             **sample_meta,
+            **split_meta,
         }
     )
-    save_metrics(metrics, config)
 
     model_path = Path(config["artifacts"]["model_file"])
     save_pickle(pipeline, model_path)
     save_pickle(preprocessor, Path(config["artifacts"]["preprocessor_file"]))
+    run_metadata_path = Path(config["artifacts"]["models_dir"]) / "run_metadata.json"
+    run_metadata_path.write_text(json.dumps(run_metadata, indent=2), encoding="utf-8")
+    save_metrics(metrics, config)
 
     if config["modeling"]["anomaly_model"]["enabled"]:
         iso_params = config["modeling"]["anomaly_model"]["params"]
@@ -250,6 +349,8 @@ def run_training(config_path: str | Path = DEFAULT_CONFIG_PATH) -> dict[str, Any
     print(f"Train shape: {X_train.shape} | Test shape: {X_test.shape}")
     print(f"Saved model: {model_path}")
     print(f"Saved preprocessor: {config['artifacts']['preprocessor_file']}")
+    print(f"Saved run metadata: {run_metadata_path}")
+    print("Saved threshold report: reports/threshold_report.json")
     print(f"Saved metrics: {config['artifacts']['metrics_file']}")
     return metrics
 
