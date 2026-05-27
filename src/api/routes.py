@@ -1,11 +1,14 @@
-"""API routes for health, metadata, and risk prediction."""
+"""API routes for health, metadata, prediction, and alerts."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from src.api.dependencies import get_prediction_service
 from src.api.schemas import (
+    AlertEvaluateRequest,
+    AlertResponse,
+    AlertsListResponse,
     BatchPredictRequest,
     BatchPredictResponse,
     HealthResponse,
@@ -57,4 +60,31 @@ def predict_batch(
     except RuntimeError as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
     return BatchPredictResponse(predictions=[PredictResult(**item) for item in predictions])
+
+
+@router.get("/alerts", response_model=AlertsListResponse)
+def get_alerts(
+    limit: int = Query(default=20, ge=1, le=200),
+    service: PredictionService = Depends(get_prediction_service),
+) -> AlertsListResponse:
+    return AlertsListResponse(alerts=[AlertResponse(**item) for item in service.get_alerts(limit=limit)])
+
+
+@router.post("/alerts/evaluate", response_model=AlertResponse)
+def evaluate_alert(
+    request: AlertEvaluateRequest,
+    service: PredictionService = Depends(get_prediction_service),
+) -> AlertResponse:
+    try:
+        payload = service.evaluate_alert(
+            transaction=request.transaction,
+            risk_score=request.risk_score,
+            predicted_label=request.predicted_label,
+            severity=request.severity,
+        )
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    except RuntimeError as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+    return AlertResponse(**payload)
 

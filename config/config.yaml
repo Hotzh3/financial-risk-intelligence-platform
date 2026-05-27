@@ -149,6 +149,7 @@ dashboard:
 
 alerts:
   enabled: true
+  storage_path: "reports/alerts.jsonl"
 
   severity_thresholds:
     low: 0.2

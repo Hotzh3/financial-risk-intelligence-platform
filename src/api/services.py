@@ -9,6 +9,9 @@ from typing import Any
 import pandas as pd
 import yaml
 
+from src.alerts.engine import AlertEngine
+from src.alerts.rules import AlertRules
+from src.alerts.storage import AlertStorage
 from src.models.predict import predict_risk
 
 DEFAULT_CONFIG_PATH = Path("config/config.yaml")
@@ -20,10 +23,17 @@ class PredictionService:
     def __init__(self, config_path: str | Path = DEFAULT_CONFIG_PATH) -> None:
         self.config_path = Path(config_path)
         self.config = self._load_config()
+        self.alert_engine = self._build_alert_engine()
 
     def _load_config(self) -> dict[str, Any]:
         with open(self.config_path, "r", encoding="utf-8") as file:
             return yaml.safe_load(file)
+
+    def _build_alert_engine(self) -> AlertEngine:
+        alert_cfg = self.config.get("alerts", {})
+        thresholds = alert_cfg.get("severity_thresholds", {})
+        storage_path = alert_cfg.get("storage_path", "reports/alerts.jsonl")
+        return AlertEngine(rules=AlertRules(thresholds=thresholds), storage=AlertStorage(storage_path))
 
     @property
     def artifacts_paths(self) -> dict[str, Path]:
@@ -57,20 +67,7 @@ class PredictionService:
         }
 
     def _severity_from_score(self, score: float) -> str:
-        thresholds = self.config.get("alerts", {}).get("severity_thresholds", {})
-        low = float(thresholds.get("low", 0.2))
-        medium = float(thresholds.get("medium", 0.5))
-        high = float(thresholds.get("high", 0.8))
-        critical = float(thresholds.get("critical", 0.95))
-        if score >= critical:
-            return "critical"
-        if score >= high:
-            return "high"
-        if score >= medium:
-            return "medium"
-        if score >= low:
-            return "low"
-        return "low"
+        return self.alert_engine.rules.severity_from_score(score)
 
     def predict_one(self, transaction: dict[str, Any]) -> dict[str, Any]:
         frame = pd.DataFrame([transaction])
@@ -98,4 +95,31 @@ class PredictionService:
                 }
             )
         return output
+
+    def evaluate_alert(
+        self,
+        transaction: dict[str, Any],
+        risk_score: float | None = None,
+        predicted_label: int | None = None,
+        severity: str | None = None,
+    ) -> dict[str, Any]:
+        prediction = None
+        if risk_score is None or predicted_label is None:
+            prediction = self.predict_one(transaction)
+        final_risk_score = float(risk_score if risk_score is not None else prediction["risk_score"])
+        final_predicted_label = int(
+            predicted_label if predicted_label is not None else prediction["predicted_label"]
+        )
+        final_severity = severity or (prediction["severity"] if prediction else None)
+
+        alert = self.alert_engine.evaluate(
+            transaction=transaction,
+            risk_score=final_risk_score,
+            predicted_label=final_predicted_label,
+            severity=final_severity,
+        )
+        return alert.model_dump()
+
+    def get_alerts(self, limit: int = 20) -> list[dict[str, Any]]:
+        return [alert.model_dump() for alert in self.alert_engine.recent_alerts(limit=limit)]
 

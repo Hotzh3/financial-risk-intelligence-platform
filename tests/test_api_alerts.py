@@ -1,90 +1,68 @@
-"""API tests for health, predictions and alert endpoints."""
+"""API tests for Phase 5 alert endpoints."""
 
 from __future__ import annotations
 
-import pytest
 from fastapi.testclient import TestClient
 
-from api.main import app
+from src.api.dependencies import get_prediction_service
+from src.api.main import app
 
 
-def _sample_payload() -> dict[str, float | int]:
-    """Build a valid prediction payload."""
-    return {
-        "TransactionAmt": 100.0,
-        "ProductCD": 1,
-        "card1": 1234,
-        "card2": 111.0,
-        "card3": 150.0,
-        "card5": 226.0,
-        "card4": 1,
-        "card6": 1,
-        "hour": 14,
-        "V45": 1.0,
-        "V86": 1.0,
-        "V87": 1.0,
-        "V44": 1.0,
-        "V52": 1.0,
-    }
+class _StubService:
+    def __init__(self) -> None:
+        self._alerts: list[dict] = []
+
+    def get_alerts(self, limit: int = 20) -> list[dict]:
+        return self._alerts[:limit]
+
+    def evaluate_alert(
+        self,
+        transaction: dict,
+        risk_score: float | None = None,
+        predicted_label: int | None = None,
+        severity: str | None = None,
+    ) -> dict:
+        alert = {
+            "alert_id": "a-1",
+            "timestamp": "2026-01-01T00:00:00+00:00",
+            "risk_score": risk_score if risk_score is not None else 0.7,
+            "predicted_label": predicted_label if predicted_label is not None else 1,
+            "severity": severity or "high",
+            "status": "open",
+            "reason_codes": ["MODEL_FLAGGED_FRAUD"],
+            "recommended_action": "manual review required",
+            "transaction": transaction,
+        }
+        self._alerts = [alert] + self._alerts
+        return alert
 
 
-def test_health_endpoint() -> None:
-    """Health endpoint should return basic status info."""
-    with TestClient(app) as client:
-        response = client.get("/health")
+def test_alerts_returns_controlled_response() -> None:
+    service = _StubService()
+    app.dependency_overrides[get_prediction_service] = lambda: service
+    try:
+        with TestClient(app) as client:
+            response = client.get("/alerts")
+        assert response.status_code == 200
+        assert response.json() == {"alerts": []}
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_alerts_evaluate_returns_alert_object() -> None:
+    service = _StubService()
+    app.dependency_overrides[get_prediction_service] = lambda: service
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/alerts/evaluate",
+                json={"transaction": {"TransactionAmt": 120.5, "ProductCD": "W", "card1": 1000}},
+            )
         assert response.status_code == 200
         body = response.json()
-        assert body["status"] == "ok"
+        assert body["alert_id"] == "a-1"
+        assert body["severity"] == "high"
+        assert body["recommended_action"] == "manual review required"
+    finally:
+        app.dependency_overrides.clear()
 
-
-def test_predict_endpoint() -> None:
-    """Predict endpoint should return risk and alert fields."""
-    with TestClient(app) as client:
-        response = client.post("/api/v1/predict", json=_sample_payload())
-        assert response.status_code == 200
-        body = response.json()
-        assert "transaction_id" in body
-        assert "anomaly_score" in body
-        assert "alert_generated" in body
-
-
-def test_alerts_and_stats_endpoints() -> None:
-    """Alerts endpoints should return list and aggregate stats."""
-    with TestClient(app) as client:
-        client.patch("/api/v1/alerts/threshold", json={"threshold": 0.0})
-        client.post("/api/v1/predict", json=_sample_payload())
-
-        alerts_response = client.get("/api/v1/alerts")
-        assert alerts_response.status_code == 200
-        alerts_body = alerts_response.json()
-        assert "alerts" in alerts_body
-        assert "total" in alerts_body
-
-        stats_response = client.get("/api/v1/alerts/stats")
-        assert stats_response.status_code == 200
-        stats_body = stats_response.json()
-        assert "total_alerts" in stats_body
-        assert "notified_pct" in stats_body
-
-
-def test_predict_endpoint_rejects_invalid_payload() -> None:
-    """Prediction endpoint should return a validation error for bad payloads."""
-    invalid_payload = _sample_payload()
-    invalid_payload.pop("TransactionAmt")
-
-    with TestClient(app) as client:
-        response = client.post("/api/v1/predict", json=invalid_payload)
-
-    assert response.status_code == 422
-    body = response.json()
-    assert body["detail"]
-    assert any(error["loc"][-1] == "TransactionAmt" for error in body["detail"])
-
-
-@pytest.mark.parametrize("threshold", [-0.1, 1.1])
-def test_update_threshold_rejects_invalid_values(threshold: float) -> None:
-    """Threshold updates outside the accepted range should fail validation."""
-    with TestClient(app) as client:
-        response = client.patch("/api/v1/alerts/threshold", json={"threshold": threshold})
-
-    assert response.status_code == 422

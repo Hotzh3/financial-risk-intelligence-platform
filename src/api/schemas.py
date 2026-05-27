@@ -41,3 +41,27 @@ class BatchPredictRequest(BaseModel):
 
 class BatchPredictResponse(BaseModel):
     predictions: list[PredictResult]
+
+
+class AlertEvaluateRequest(BaseModel):
+    transaction: dict[str, Any]
+    risk_score: float | None = None
+    predicted_label: int | None = None
+    severity: str | None = None
+
+
+class AlertResponse(BaseModel):
+    alert_id: str
+    timestamp: str
+    risk_score: float
+    predicted_label: int
+    severity: str
+    status: str
+    reason_codes: list[str] = Field(default_factory=list)
+    recommended_action: str
+    transaction: dict[str, Any]
+
+
+class AlertsListResponse(BaseModel):
+    alerts: list[AlertResponse]
+

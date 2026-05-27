@@ -300,6 +300,69 @@ The dashboard provides:
 - Local model metrics from `reports/model_metrics.json` when available
 - Local threshold report from `reports/threshold_report.json` when available
 
+## Phase 5 Alert Engine
+
+Phase 5 adds a lightweight, rule-based alert engine for fraud risk operations.
+It converts prediction outputs (`risk_score`, `predicted_label`, `severity`) into
+actionable alerts with reason codes and recommended actions.
+
+Alert fields include:
+
+- `alert_id`
+- `timestamp`
+- `risk_score`
+- `predicted_label`
+- `severity` (`low`, `medium`, `high`, `critical`)
+- `status`
+- `reason_codes`
+- `recommended_action`
+- transaction snapshot
+
+Storage is local JSONL for development/demo:
+
+- `reports/alerts.jsonl`
+
+### API endpoints
+
+Get recent alerts:
+
+```bash
+curl http://127.0.0.1:8000/alerts
+```
+
+Evaluate and persist one alert:
+
+```bash
+curl -X POST http://127.0.0.1:8000/alerts/evaluate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "transaction": {
+      "TransactionAmt": 120.5,
+      "ProductCD": "W",
+      "card1": 1000
+    }
+  }'
+```
+
+### Dashboard alert panel
+
+Start API:
+
+```bash
+python -m uvicorn src.api.main:app --reload
+```
+
+Start dashboard:
+
+```bash
+python -m streamlit run dashboard/app.py
+```
+
+The dashboard includes:
+
+- Recent alerts table from `GET /alerts`
+- Sample alert generation via `POST /alerts/evaluate`
+
 ## Screenshots / Demo
 
 Dedicated screenshot and demo notes live in [`docs/screenshots/`](docs/screenshots/).
