@@ -1,204 +1,169 @@
-"""
-Streamlit Dashboard for the Financial Risk Intelligence Platform.
-"""
+"""Streamlit dashboard for Financial Risk Intelligence Platform (Phase 4)."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
 
 import streamlit as st
-import requests
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 
-API_URL = "http://127.0.0.1:8000"
-
-st.set_page_config(
-    page_title="Financial Risk Intelligence Platform",
-    page_icon="🛡️",
-    layout="wide"
+from dashboard.components.charts import render_metrics_chart, render_threshold_rows
+from dashboard.components.metrics import extract_core_metrics, load_json_report
+from dashboard.utils.api_client import (
+    get_api_base_url,
+    get_health,
+    get_model_metadata,
+    predict_batch,
+    predict_one,
 )
 
-st.title("🛡️ Financial Risk Intelligence Platform")
-st.markdown("Real-time fraud detection dashboard")
+REPORTS_DIR = Path("reports")
+METRICS_PATH = REPORTS_DIR / "model_metrics.json"
+THRESHOLD_PATH = REPORTS_DIR / "threshold_report.json"
+SEVERITY_COLORS = {
+    "low": "#2e7d32",
+    "medium": "#f9a825",
+    "high": "#ef6c00",
+    "critical": "#c62828",
+}
 
-# ── KPIs ──────────────────────────────────────────────────────────────
-st.header("System Metrics")
 
-try:
-    response = requests.get(f"{API_URL}/api/v1/metrics", timeout=3)
-    metrics = response.json()
-    api_status = "🟢 Online"
-except Exception:
-    metrics = {
-        "total_transactions": 590540,
-        "fraud_rate": 0.035,
-        "roc_auc": 0.7120,
-        "model": "Isolation Forest"
-    }
-    api_status = "🔴 Offline"
+st.set_page_config(page_title="Financial Risk Intelligence Platform", layout="wide")
+st.title("Financial Risk Intelligence Platform")
+st.caption("Fraud-risk monitoring dashboard for API health, model quality, and live scoring.")
 
-col1, col2, col3, col4, col5 = st.columns(5)
-col1.metric("API Status", api_status)
-col2.metric("Total Transactions", f"{metrics['total_transactions']:,}")
-col3.metric("Fraud Rate", f"{metrics['fraud_rate']*100:.1f}%")
-col4.metric("ROC-AUC", f"{metrics['roc_auc']:.4f}")
-col5.metric("Model", metrics['model'])
+api_base_url = get_api_base_url()
 
-st.divider()
-
-# ── Fraud Distribution ────────────────────────────────────────────────
-st.header("Fraud Distribution")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    fig, ax = plt.subplots(figsize=(6, 4))
-    labels = ['Legitimate', 'Fraud']
-    sizes = [1 - metrics['fraud_rate'], metrics['fraud_rate']]
-    colors = ['#2ecc71', '#e74c3c']
-    ax.pie(sizes, labels=labels, colors=colors,
-           autopct='%1.1f%%', startangle=90,
-           wedgeprops={'edgecolor': 'white', 'linewidth': 2})
-    ax.set_title('Class Distribution')
-    st.pyplot(fig)
-
-with col2:
-    fraud_count = int(metrics['total_transactions'] * metrics['fraud_rate'])
-    legit_count = metrics['total_transactions'] - fraud_count
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.bar(['Legitimate', 'Fraud'], [legit_count, fraud_count],
-           color=['#2ecc71', '#e74c3c'])
-    ax.set_title('Transaction Count by Class')
-    ax.set_ylabel('Count')
-    for i, v in enumerate([legit_count, fraud_count]):
-        ax.text(i, v + 1000, f'{v:,}', ha='center', fontweight='bold')
-    st.pyplot(fig)
-
-st.divider()
-
-# ── Alerts Panel ────────────────────────────────────────────────────────
-st.header("🚨 Alerts Panel")
-
-alerts_stats = None
-alerts_rows = []
-
-if st.button("Refresh Alerts", use_container_width=False):
-    st.rerun()
-
-try:
-    stats_response = requests.get(f"{API_URL}/api/v1/alerts/stats", timeout=3)
-    stats_response.raise_for_status()
-    alerts_stats = stats_response.json()
-
-    alerts_response = requests.get(f"{API_URL}/api/v1/alerts?limit=20", timeout=3)
-    alerts_response.raise_for_status()
-    alerts_rows = alerts_response.json().get("alerts", [])
-except Exception:
-    st.info("Alerts service not available yet. Showing fraud dashboard without alerts.")
-
-if alerts_stats is not None:
-    m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("Total Alerts", alerts_stats.get("total_alerts", 0))
-    m2.metric("Low", alerts_stats.get("low", 0))
-    m3.metric("Medium", alerts_stats.get("medium", 0))
-    m4.metric("High", alerts_stats.get("high", 0))
-    m5.metric("Notified %", f"{alerts_stats.get('notified_pct', 0.0):.1f}%")
-
-    with st.expander("Threshold Configuration"):
-        current_threshold = st.slider(
-            "Alert threshold",
-            min_value=0.0,
-            max_value=1.0,
-            step=0.01,
-            value=0.70,
+with st.container(border=True):
+    st.subheader("API Health")
+    health = get_health()
+    if "error" in health:
+        st.warning(
+            "API unavailable. Start it with: `python -m uvicorn src.api.main:app --reload`"
         )
-        if st.button("Update threshold", key="update_threshold_btn"):
-            try:
-                update_res = requests.patch(
-                    f"{API_URL}/api/v1/alerts/threshold",
-                    json={"threshold": current_threshold},
-                    timeout=3,
-                )
-                update_res.raise_for_status()
-                st.success(f"Threshold updated to {update_res.json()['threshold']:.2f}")
-            except Exception as exc:
-                st.warning(f"Could not update threshold: {exc}")
-
-    if alerts_rows:
-        alerts_df = pd.DataFrame(alerts_rows)
-        alerts_df["severity_color"] = alerts_df["severity"].map(
-            {"LOW": "🟢 LOW", "MEDIUM": "🟡 MEDIUM", "HIGH": "🔴 HIGH"}
-        ).fillna(alerts_df["severity"])
-        display_columns = [
-            "timestamp",
-            "transaction_id",
-            "anomaly_score",
-            "severity_color",
-            "risk_level",
-            "amount",
-            "status",
-        ]
-        st.dataframe(alerts_df[display_columns], use_container_width=True, hide_index=True)
+        st.caption(f"Configured API_BASE_URL: {api_base_url}")
     else:
-        st.caption("No alerts generated yet.")
+        st.success(f"Status: {health.get('status', 'unknown')}")
+        st.caption(f"Service: {health.get('service', 'n/a')} | API_BASE_URL: {api_base_url}")
 
-st.divider()
+with st.container(border=True):
+    st.subheader("Model Metadata")
+    metadata = get_model_metadata()
+    if "error" in metadata:
+        st.warning(f"Could not load model metadata: {metadata['error']}")
+    else:
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Model", metadata.get("model_name") or "n/a")
+        c2.metric("Target", metadata.get("target_column") or "n/a")
+        c3.metric("Features", metadata.get("number_of_features") or "n/a")
+        c4.metric("Threshold", metadata.get("threshold") or "n/a")
+        artifacts = metadata.get("artifacts", {})
+        artifact_rows = []
+        for name, item in artifacts.items():
+            artifact_rows.append(
+                {
+                    "artifact": name,
+                    "path": item.get("path", "n/a"),
+                    "exists": item.get("exists", False),
+                }
+            )
+        if artifact_rows:
+            st.dataframe(artifact_rows, use_container_width=True, hide_index=True)
 
-# ── Live Prediction ───────────────────────────────────────────────────
-st.header("🔍 Live Transaction Scoring")
+with st.container(border=True):
+    st.subheader("Single Prediction")
+    with st.form("single_prediction"):
+        col1, col2, col3 = st.columns(3)
+        transaction_amt = col1.number_input("TransactionAmt", min_value=0.0, value=120.5)
+        product_cd = col2.selectbox("ProductCD", options=["W", "H", "C", "S", "R"], index=0)
+        card1 = col3.number_input("card1", min_value=0, value=1000, step=1)
 
-with st.form("predict_form"):
-    col1, col2, col3 = st.columns(3)
+        with st.expander("Optional card fields"):
+            o1, o2, o3 = st.columns(3)
+            card2 = o1.number_input("card2", min_value=0.0, value=0.0)
+            card3 = o2.number_input("card3", min_value=0.0, value=0.0)
+            card4 = o3.text_input("card4", value="visa")
+            o4, o5, o6 = st.columns(3)
+            card5 = o4.number_input("card5", min_value=0.0, value=0.0)
+            card6 = o5.text_input("card6", value="credit")
+            include_optional = o6.checkbox("Include optional fields", value=False)
 
-    with col1:
-        amount = st.number_input("Transaction Amount ($)", min_value=0.0, value=100.0)
-        hour = st.slider("Hour of Day", 0, 23, 14)
-        product = st.selectbox("Product Category", [0, 1, 2, 3, 4])
+        submitted = st.form_submit_button("Predict Risk")
 
-    with col2:
-        card1 = st.number_input("Card 1", value=1234)
-        card2 = st.number_input("Card 2", value=111.0)
-        card3 = st.number_input("Card 3", value=150.0)
-
-    with col3:
-        v45 = st.number_input("V45", value=1.0)
-        v86 = st.number_input("V86", value=1.0)
-        v87 = st.number_input("V87", value=1.0)
-
-    submitted = st.form_submit_button("Score Transaction")
-
-if submitted:
-    payload = {
-        "TransactionAmt": amount,
-        "ProductCD": product,
-        "card1": int(card1),
-        "card2": card2,
-        "card3": card3,
-        "card5": 226.0,
-        "card4": 1,
-        "card6": 1,
-        "hour": hour,
-        "V45": v45,
-        "V86": v86,
-        "V87": v87,
-        "V44": 1.0,
-        "V52": 1.0,
-    }
-
-    try:
-        res = requests.post(f"{API_URL}/api/v1/predict", json=payload, timeout=5)
-        result = res.json()
-
-        risk = result['risk_level']
-        score = result['anomaly_score']
-
-        if risk == "HIGH":
-            st.error(f"🚨 HIGH RISK — Anomaly Score: {score:.4f}")
-        elif risk == "MEDIUM":
-            st.warning(f"⚠️ MEDIUM RISK — Anomaly Score: {score:.4f}")
+    if submitted:
+        transaction = {
+            "TransactionAmt": transaction_amt,
+            "ProductCD": product_cd,
+            "card1": int(card1),
+        }
+        if include_optional:
+            transaction.update(
+                {
+                    "card2": card2,
+                    "card3": card3,
+                    "card4": card4,
+                    "card5": card5,
+                    "card6": card6,
+                }
+            )
+        prediction = predict_one(transaction)
+        if "error" in prediction:
+            st.error(f"Prediction failed: {prediction['error']}")
         else:
-            st.success(f"✅ LOW RISK — Anomaly Score: {score:.4f}")
+            severity = str(prediction.get("severity", "low")).lower()
+            color = SEVERITY_COLORS.get(severity, "#424242")
+            st.markdown(
+                f"<div style='padding:10px;border-radius:8px;background-color:{color};color:white;font-weight:600;'>"
+                f"Severity: {severity.upper()}</div>",
+                unsafe_allow_html=True,
+            )
+            c1, c2 = st.columns(2)
+            c1.metric("Risk Score", f"{float(prediction.get('risk_score', 0.0)):.4f}")
+            c2.metric("Predicted Label", str(prediction.get("predicted_label", "n/a")))
 
-        st.json(result)
+with st.container(border=True):
+    st.subheader("Batch Prediction (Optional)")
+    sample_payload = [
+        {"TransactionAmt": 120.5, "ProductCD": "W", "card1": 1000},
+        {"TransactionAmt": 5.0, "ProductCD": "H", "card1": 2345},
+    ]
+    batch_input = st.text_area(
+        "Paste JSON list of transactions",
+        value=json.dumps(sample_payload, indent=2),
+        height=180,
+    )
+    if st.button("Run Batch Prediction"):
+        try:
+            transactions = json.loads(batch_input)
+            if not isinstance(transactions, list):
+                raise ValueError("Input must be a JSON list.")
+        except (json.JSONDecodeError, ValueError) as exc:
+            st.error(f"Invalid JSON input: {exc}")
+        else:
+            batch = predict_batch(transactions)
+            if "error" in batch:
+                st.error(f"Batch prediction failed: {batch['error']}")
+            else:
+                st.dataframe(batch.get("predictions", []), use_container_width=True, hide_index=True)
 
-    except Exception as e:
-        st.error(f"API Error: {e}")
+with st.container(border=True):
+    st.subheader("Model Metrics")
+    metrics_report = load_json_report(METRICS_PATH)
+    if metrics_report is None:
+        st.warning(f"Missing or invalid metrics report: {METRICS_PATH}")
+    else:
+        core_metrics = extract_core_metrics(metrics_report)
+        cols = st.columns(6)
+        for idx, key in enumerate(["precision", "recall", "f1", "roc_auc", "pr_auc", "threshold"]):
+            value = core_metrics.get(key)
+            cols[idx].metric(key, f"{value:.4f}" if value is not None else "n/a")
+        render_metrics_chart(core_metrics)
+
+with st.container(border=True):
+    st.subheader("Threshold Report")
+    threshold_report = load_json_report(THRESHOLD_PATH)
+    if threshold_report is None:
+        st.warning(f"Missing or invalid threshold report: {THRESHOLD_PATH}")
+    else:
+        threshold_rows = threshold_report.get("threshold_rows", [])
+        render_threshold_rows(threshold_rows)

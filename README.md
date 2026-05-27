@@ -265,12 +265,24 @@ Interactive API docs:
 http://127.0.0.1:8000/docs
 ```
 
-## Running the Dashboard
+## Phase 4 Dashboard
 
-In a second terminal, with the API running:
+Start the API first:
+
+```bash
+python -m uvicorn src.api.main:app --reload
+```
+
+Then start the dashboard in a second terminal:
 
 ```bash
 streamlit run dashboard/app.py
+```
+
+Optional API URL override:
+
+```bash
+API_BASE_URL=http://127.0.0.1:8000 streamlit run dashboard/app.py
 ```
 
 Dashboard default URL:
@@ -278,6 +290,15 @@ Dashboard default URL:
 ```text
 http://localhost:8501
 ```
+
+The dashboard provides:
+
+- API health status (`/health`)
+- Model metadata and artifact availability (`/model/metadata`)
+- Single transaction prediction (`/predict`)
+- Optional batch prediction (`/predict/batch`)
+- Local model metrics from `reports/model_metrics.json` when available
+- Local threshold report from `reports/threshold_report.json` when available
 
 ## Screenshots / Demo
 
@@ -296,7 +317,7 @@ used to document the workflow and model exploration:
 
 Recommended demo flow for a short walkthrough:
 
-1. Start the API with `uvicorn api.main:app --reload`.
+1. Start the API with `python -m uvicorn src.api.main:app --reload`.
 2. Open `http://127.0.0.1:8000/docs` to show live prediction and alert routes.
 3. Launch `streamlit run dashboard/app.py` to demonstrate dashboard scoring and monitoring.
 
