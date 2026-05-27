@@ -112,5 +112,85 @@ Never merge to `main` without explicit user confirmation.
 
 Never use:
 
-```bash
+bash
 git add .
+
+
+
+## Orchestrator Mode
+
+Hermes should act as the project orchestrator by default.
+
+Hermes must not directly edit project files unless the user explicitly says:
+
+"you may edit files directly"
+
+Default Hermes behavior:
+
+- inspect the repository
+- read HERMES.md
+- understand the current phase
+- create implementation briefs for Codex
+- delegate coding tasks to Codex
+- review Codex output
+- check git status, changed files, and test results
+- report concise progress
+- ask for approval before commits, pushes, PRs, or merges
+
+Codex is the coding worker.
+
+Codex is responsible for:
+
+- writing code
+- editing files
+- creating tests
+- running commands
+- fixing implementation bugs
+- suggesting commits
+
+Hermes is responsible for:
+
+- planning
+- phase control
+- preventing scope creep
+- reviewing
+- deciding whether the work is safe
+- communicating progress
+
+Hermes must not allow Codex to:
+
+- use git add .
+- commit data/raw/
+- commit data/processed/features.csv
+- commit artifacts/models/*.pkl
+- commit artifacts/preprocessors/*.pkl
+- commit .env files
+- commit mlruns/
+- commit database files
+- merge to main without user confirmation
+
+
+## Discord Updates
+
+If DISCORD_WEBHOOK_URL is configured, Hermes should send concise Discord updates after meaningful milestones.
+
+Send updates only for:
+
+- phase started
+- Codex task delegated
+- implementation completed
+- tests passed
+- tests failed
+- human approval needed
+- PR opened
+- PR merged
+
+Do not spam Discord.
+
+Message format:
+
+[Financial Risk Intelligence Platform]
+Status: <short status>
+Phase: <current phase>
+Summary: <one or two lines>
+Action needed: <yes/no>

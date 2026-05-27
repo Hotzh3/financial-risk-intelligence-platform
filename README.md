@@ -217,13 +217,46 @@ pip install -r requirements.txt
 ## Running the API
 
 ```bash
-uvicorn api.main:app --reload
+uvicorn src.api.main:app --reload
 ```
 
 Health check:
 
 ```bash
 curl http://127.0.0.1:8000/health
+```
+
+Model metadata:
+
+```bash
+curl http://127.0.0.1:8000/model/metadata
+```
+
+Single prediction:
+
+```bash
+curl -X POST http://127.0.0.1:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "transaction": {
+      "TransactionAmt": 120.5,
+      "ProductCD": "W",
+      "card1": 1000
+    }
+  }'
+```
+
+Batch prediction:
+
+```bash
+curl -X POST http://127.0.0.1:8000/predict/batch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "transactions": [
+      {"TransactionAmt": 120.5, "ProductCD": "W", "card1": 1000},
+      {"TransactionAmt": 5.0, "ProductCD": "H", "card1": 2345}
+    ]
+  }'
 ```
 
 Interactive API docs:
