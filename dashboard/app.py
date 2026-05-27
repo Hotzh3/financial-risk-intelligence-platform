@@ -10,7 +10,9 @@ import streamlit as st
 from dashboard.components.charts import render_metrics_chart, render_threshold_rows
 from dashboard.components.metrics import extract_core_metrics, load_json_report
 from dashboard.utils.api_client import (
+    evaluate_alert,
     get_api_base_url,
+    get_alerts,
     get_health,
     get_model_metadata,
     predict_batch,
@@ -145,6 +147,41 @@ with st.container(border=True):
                 st.error(f"Batch prediction failed: {batch['error']}")
             else:
                 st.dataframe(batch.get("predictions", []), use_container_width=True, hide_index=True)
+
+with st.container(border=True):
+    st.subheader("Alerts (Phase 5)")
+    alerts_payload = get_alerts(limit=20)
+    if "error" in alerts_payload:
+        st.warning("Alerts unavailable because API is down or endpoint is unreachable.")
+    else:
+        alerts = alerts_payload.get("alerts", [])
+        if alerts:
+            st.dataframe(
+                [
+                    {
+                        "timestamp": item.get("timestamp"),
+                        "severity": item.get("severity"),
+                        "risk_score": item.get("risk_score"),
+                        "predicted_label": item.get("predicted_label"),
+                        "reason_codes": ", ".join(item.get("reason_codes", [])),
+                        "recommended_action": item.get("recommended_action"),
+                    }
+                    for item in alerts
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
+        else:
+            st.info("No alerts generated yet.")
+
+    if st.button("Generate Alert From Sample Transaction"):
+        sample_transaction = {"TransactionAmt": 120.5, "ProductCD": "W", "card1": 1000}
+        alert = evaluate_alert(sample_transaction)
+        if "error" in alert:
+            st.warning(f"Could not evaluate alert: {alert['error']}")
+        else:
+            st.success(f"Alert generated: {alert.get('alert_id')}")
+            st.json(alert)
 
 with st.container(border=True):
     st.subheader("Model Metrics")

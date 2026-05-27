@@ -42,3 +42,24 @@ def predict_one(transaction: dict[str, Any]) -> dict[str, Any]:
 
 def predict_batch(transactions: list[dict[str, Any]]) -> dict[str, Any]:
     return _request("POST", "/predict/batch", payload={"transactions": transactions})
+
+
+def get_alerts(limit: int = 20) -> dict[str, Any]:
+    return _request("GET", f"/alerts?limit={limit}")
+
+
+def evaluate_alert(
+    transaction: dict[str, Any],
+    risk_score: float | None = None,
+    predicted_label: int | None = None,
+    severity: str | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {"transaction": transaction}
+    if risk_score is not None:
+        payload["risk_score"] = risk_score
+    if predicted_label is not None:
+        payload["predicted_label"] = predicted_label
+    if severity is not None:
+        payload["severity"] = severity
+    return _request("POST", "/alerts/evaluate", payload=payload)
+
