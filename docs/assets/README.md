@@ -1,12 +1,38 @@
-# Docs Assets
+# Demo Assets Guide
 
-Store portfolio screenshots and demo visuals here.
+This directory stores manual screenshot assets used in README and portfolio materials.
 
-Suggested files:
+## Expected Filenames
 
-- `api-docs.png`
-- `dashboard-overview.png`
-- `single-prediction.png`
-- `alerts-panel.png`
+- `dashboard_overview.png`
+- `api_docs.png`
+- `alert_engine.png`
+- `model_metrics.png`
+- `single_prediction_result.png`
+- `threshold_report.png`
+- `docker_commands_terminal.png`
 
-Keep image assets lightweight and avoid committing sensitive or raw data snapshots.
+## Naming Convention
+
+- Use lowercase snake_case.
+- Use descriptive, stable names tied to UI sections.
+- Prefer `.png` for UI clarity.
+
+## Recommended Dimensions
+
+- README hero/overview: `1600x900`
+- Panel/detail captures: `1400x900`
+- Terminal screenshots: `1400x800`
+
+## Size Guidance
+
+- Suggested max size per image: `500 KB`
+- Absolute max per image: `1 MB`
+- Compress images before committing.
+
+## Commit Hygiene
+
+- Do not commit huge files.
+- Do not include sensitive data or local secrets.
+- Do not include raw dataset views with personal/sensitive information.
+- Keep only intentional final assets used for portfolio presentation.
