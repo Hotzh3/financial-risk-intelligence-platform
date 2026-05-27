@@ -1,73 +1,96 @@
 # Screenshots Checklist
 
-Capture screenshots manually after running API and dashboard.
+Capture screenshots manually after starting the app.
 
-## 1) README / Repo Landing
+## Start Commands
+
+```bash
+make test
+make api
+make dashboard
+```
+
+Optional Docker run:
+
+```bash
+make docker-up
+make docker-down
+```
+
+## URLs
+
+- API health: http://127.0.0.1:8000/health
+- API docs: http://127.0.0.1:8000/docs
+- Dashboard: http://127.0.0.1:8501
+
+## Required Captures
+
+## 1) Repo Landing
 - Filename: `repo_landing.png`
 - Where: GitHub repository main page
-- Run first: push docs updates to your branch
-- Visible: project title, short summary, key docs links
-- Why it matters: first-impression professionalism
+- Command before capture: push docs branch
+- Should show: project title, short summary, docs links
+- Why recruiters care: fast credibility check
 
-## 2) API Health Endpoint
+## 2) API Health
 - Filename: `api_health_response.png`
-- Where: terminal or browser call to `GET /health`
-- Run first: `make api`
-- Visible: `{"status":"ok","service":"financial-risk-intelligence-api"}`
-- Why it matters: service reliability signal
+- Where: browser or terminal `GET /health`
+- Command before capture: `make api`
+- Should show: `{"status":"ok","service":"financial-risk-intelligence-api"}`
+- Why recruiters care: service is running and testable
 
-## 3) FastAPI Swagger Docs
+## 3) FastAPI Docs
 - Filename: `api_docs.png`
 - Where: `http://127.0.0.1:8000/docs`
-- Run first: `make api`
-- Visible: endpoint list (`/health`, `/predict`, `/alerts`)
-- Why it matters: clear API contract and backend quality
+- Command before capture: `make api`
+- Should show: endpoint list and interactive docs
+- Why recruiters care: API contract quality
 
-## 4) Model Metadata Response
+## 4) Model Metadata
 - Filename: `model_metadata_response.png`
-- Where: Swagger or curl for `GET /model/metadata`
-- Run first: `make api`
-- Visible: model name, threshold, feature count, artifact checks
-- Why it matters: reproducibility and artifact governance
+- Where: Swagger response for `GET /model/metadata`
+- Command before capture: `make api`
+- Should show: model name, threshold, feature count, artifact statuses
+- Why recruiters care: reproducibility and artifact governance
 
-## 5) Dashboard Top Section
+## 5) Dashboard Overview
 - Filename: `dashboard_overview.png`
 - Where: `http://127.0.0.1:8501`
-- Run first: `make dashboard`
-- Visible: title, API Health, Model Metadata blocks
-- Why it matters: product-facing monitoring capability
+- Command before capture: `make dashboard`
+- Should show: title + API Health + Model Metadata sections
+- Why recruiters care: product-facing operational layer
 
 ## 6) Single Prediction Result
 - Filename: `single_prediction_result.png`
-- Where: dashboard single prediction panel
-- Run first: `make api` and `make dashboard`
-- Visible: input form + returned severity/risk score/label
-- Why it matters: end-to-end inference proof
+- Where: dashboard single prediction section
+- Command before capture: `make api` and `make dashboard`
+- Should show: form + returned risk score/predicted label/severity
+- Why recruiters care: end-to-end inference proof
 
-## 7) Model Metrics Chart
+## 7) Model Metrics
 - Filename: `model_metrics.png`
-- Where: dashboard metrics panel
-- Run first: `make dashboard`
-- Visible: precision/recall/F1/ROC-AUC/PR-AUC + chart
-- Why it matters: fraud-aware evaluation discipline
+- Where: dashboard model metrics panel
+- Command before capture: `make dashboard`
+- Should show: precision, recall, F1, ROC-AUC, PR-AUC, threshold chart area
+- Why recruiters care: fraud-aware evaluation discipline
 
 ## 8) Threshold Report
 - Filename: `threshold_report.png`
 - Where: dashboard threshold section
-- Run first: `make dashboard`
-- Visible: threshold rows including alerts-per-10k
-- Why it matters: operational trade-off thinking
+- Command before capture: `make dashboard`
+- Should show: threshold rows with alerts-per-10k
+- Why recruiters care: operational trade-off reasoning
 
-## 9) Alerts Section With Generated Alert
+## 9) Alert Engine Panel
 - Filename: `alert_engine.png`
-- Where: dashboard alerts panel
-- Run first: click "Generate Alert From Sample Transaction"
-- Visible: alert row with severity, reason codes, action
-- Why it matters: explainable business logic, not just model score
+- Where: dashboard alerts section
+- Command before capture: click "Generate Alert From Sample Transaction"
+- Should show: generated alert with severity, reason codes, recommended action
+- Why recruiters care: explainability and business logic integration
 
-## 10) Docker/Makefile Commands
+## 10) Docker/Make Commands
 - Filename: `docker_commands_terminal.png`
-- Where: terminal session
-- Run first: `make help`, `make docker-up`, `make docker-logs`
-- Visible: command output proving local production-readiness
-- Why it matters: engineering maturity and reproducible setup
+- Where: terminal
+- Command before capture: `make help`, `make docker-up`, `make docker-down`
+- Should show: reproducible local workflow commands
+- Why recruiters care: engineering maturity and environment consistency

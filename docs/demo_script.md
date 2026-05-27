@@ -1,53 +1,49 @@
 # Demo Script (3-5 Minutes)
 
-## 0) Setup Check (15s)
-Say: "This is a local, production-inspired fraud risk platform. I will show data-to-inference operations in under five minutes."
+## 0) Setup (15s)
+Say: "This is a local, production-inspired fraud risk platform. I’ll show model serving, monitoring, and alerting in under five minutes."
 
-Command:
+Run:
 
 ```bash
 make help
+make test
 ```
 
 ## 1) Start API (30s)
-Say: "First I start the prediction service."
+Say: "First I start the FastAPI prediction service."
 
 ```bash
 make api
 ```
 
-If it fails:
-- Verify virtual env exists
-- Run `make install`
-- Restart `make api`
+Open: `http://127.0.0.1:8000/docs`
+
+Click/Highlight:
+- `GET /health`
+- `GET /model/metadata`
+- `POST /predict`
+- `POST /alerts/evaluate`
 
 ## 2) Start Dashboard (30s)
-Say: "Now I start the operations dashboard in a separate terminal."
+Say: "Now I open the operations dashboard that consumes these endpoints."
+
+In a second terminal:
 
 ```bash
 make dashboard
 ```
 
-If it fails:
-- Confirm API is running on `http://127.0.0.1:8000`
-- Set `API_BASE_URL` if needed: `export API_BASE_URL=http://127.0.0.1:8000`
-- Restart dashboard
+Open: `http://127.0.0.1:8501`
 
-## 3) Open API Docs (30s)
-Say: "FastAPI gives us an explicit contract for inference and alert endpoints."
+Click/Highlight:
+- API Health panel
+- Model Metadata panel
 
-Open: `http://127.0.0.1:8000/docs`
+## 3) Run Prediction (45s)
+Say: "I’ll score one transaction and review risk output."
 
-Highlight:
-- `GET /health`
-- `GET /model/metadata`
-- `POST /predict`
-- `POST /predict/batch`
-- `GET /alerts`
-- `POST /alerts/evaluate`
-
-## 4) Run Prediction (45s)
-Say: "I’ll score one transaction and inspect risk output."
+Use Swagger or terminal:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/predict \
@@ -55,13 +51,13 @@ curl -X POST http://127.0.0.1:8000/predict \
   -d '{"transaction":{"TransactionAmt":120.5,"ProductCD":"W","card1":1000}}'
 ```
 
-Call out:
-- `risk_score`
-- `predicted_label`
-- `severity`
+What to say:
+- "`risk_score` is the model probability-style risk signal."
+- "`predicted_label` is thresholded output."
+- "`severity` maps risk to operational triage bands."
 
-## 5) Generate Alert (45s)
-Say: "Next I transform risk output into a reason-coded alert for analyst workflow."
+## 4) Generate Alert (45s)
+Say: "Next I convert prediction output into an analyst-facing alert."
 
 ```bash
 curl -X POST http://127.0.0.1:8000/alerts/evaluate \
@@ -75,32 +71,41 @@ Then:
 curl 'http://127.0.0.1:8000/alerts?limit=5'
 ```
 
-## 6) Show Metrics + Thresholds (45s)
-Say: "For fraud, we care more about precision/recall trade-offs than raw accuracy."
+What to say:
+- "Each alert includes severity, reason codes, and recommended action."
 
-Show in dashboard:
+## 5) Show Metrics + Threshold Trade-Offs (45s)
+Say: "For fraud, accuracy is secondary to precision/recall and operational review volume."
+
+In dashboard:
 - Model Metrics panel
 - Threshold Report panel
 
-Reference files:
+Reference:
 - `reports/model_metrics.json`
 - `reports/threshold_report.json`
 
-## 7) Local Production Readiness (30s)
-Say: "The repo is reproducible with Make targets, Docker Compose, and CI tests."
+## 6) Local Production Readiness (30s)
+Say: "The project is reproducible with Make targets, Docker Compose, and CI tests."
 
 ```bash
 make docker-up
-make docker-logs
 make docker-down
 ```
 
-## Fallback Path (if UI unavailable)
-If dashboard is down, demo only with API:
-- `GET /health`
-- `GET /model/metadata`
-- `POST /predict`
-- `POST /alerts/evaluate`
-- `GET /alerts`
+## Fallbacks
 
-Close with: "The system remains demonstrable end-to-end through API contracts even without the UI."
+If API fails:
+- run `make install`
+- re-run `make api`
+
+If dashboard fails:
+- ensure API is live at `http://127.0.0.1:8000/health`
+- set `API_BASE_URL=http://127.0.0.1:8000`
+- re-run `make dashboard`
+
+If Docker fails:
+- continue demo via local `make api` + `make dashboard`
+
+## End the Demo (15s)
+Say: "This project demonstrates end-to-end ML engineering: data pipeline, reproducible modeling, API serving, operational dashboard, alerting logic, and developer-ready local deployment."
