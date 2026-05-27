@@ -66,6 +66,29 @@ make docker-logs
 - API docs: http://127.0.0.1:8000/docs
 - Dashboard: http://127.0.0.1:8501
 
+## Demo Preview
+
+Add screenshots manually after running the app. Suggested files:
+
+- `docs/assets/dashboard_overview.png`
+- `docs/assets/api_docs.png`
+- `docs/assets/alert_engine.png`
+- `docs/assets/model_metrics.png`
+
+Capture guidance is available in `docs/screenshots_checklist.md` and `docs/assets/README.md`.
+
+## Demo Flow
+
+1. Start API (`make api`)
+2. Start dashboard (`make dashboard`)
+3. Open API docs (`http://127.0.0.1:8000/docs`)
+4. Run single prediction (`POST /predict`)
+5. Generate alert (`POST /alerts/evaluate`)
+6. Show metrics + threshold report (`reports/model_metrics.json`, `reports/threshold_report.json`)
+7. Explain Docker/Makefile commands (`make docker-up`, `make docker-logs`, `make docker-down`)
+
+For speaker notes and fallback steps, see `docs/demo_script.md`.
+
 ## Project Structure
 
 ```text
@@ -77,7 +100,7 @@ src/
   alerts/      # alert rules, engine, JSONL storage
 
 dashboard/     # Streamlit app and UI helpers
-docs/          # architecture, modeling, API, dashboard, alerts, interview prep
+docs/          # architecture, modeling, API, dashboard, alerts, and portfolio materials
 reports/       # metrics + threshold reports (generated)
 config/        # YAML configuration
 tests/         # unit/integration tests
@@ -116,18 +139,6 @@ curl -X POST http://127.0.0.1:8000/predict \
   -d '{"transaction":{"TransactionAmt":120.5,"ProductCD":"W","card1":1000}}'
 ```
 
-```bash
-curl -X POST http://127.0.0.1:8000/predict/batch \
-  -H "Content-Type: application/json" \
-  -d '{"transactions":[{"TransactionAmt":120.5,"ProductCD":"W","card1":1000},{"TransactionAmt":5.0,"ProductCD":"H","card1":2345}]}'
-```
-
-```bash
-curl -X POST http://127.0.0.1:8000/alerts/evaluate \
-  -H "Content-Type: application/json" \
-  -d '{"transaction":{"TransactionAmt":1500,"ProductCD":"W","card1":7777},"risk_score":0.97,"predicted_label":1}'
-```
-
 ## Dashboard
 
 The dashboard (`dashboard/app.py`) provides:
@@ -139,12 +150,6 @@ The dashboard (`dashboard/app.py`) provides:
 - Model metrics panel
 - Threshold report panel
 - Alerts panel and sample alert generation
-
-Run with:
-
-```bash
-make dashboard
-```
 
 ## Alert Engine
 
@@ -171,18 +176,24 @@ make dashboard
 - Demonstrates local production-readiness with Docker and CI workflows
 - Reflects professional Git hygiene and artifact boundaries
 
-## Interview Defense
+## Portfolio Links / Materials
 
-See the dedicated guide: [docs/interview_guide.md](/Users/josema/Documents/financial-risk-intelligence-platform/docs/interview_guide.md)
+- `docs/portfolio_pitch.md`
+- `docs/linkedin_post.md`
+- `docs/cv_bullets.md`
+- `docs/interview_guide.md`
+- `docs/demo_script.md`
 
 ## Documentation Index
 
-- [Architecture](/Users/josema/Documents/financial-risk-intelligence-platform/docs/architecture.md)
-- [Modeling](/Users/josema/Documents/financial-risk-intelligence-platform/docs/modeling.md)
-- [API](/Users/josema/Documents/financial-risk-intelligence-platform/docs/api.md)
-- [Dashboard](/Users/josema/Documents/financial-risk-intelligence-platform/docs/dashboard.md)
-- [Alerts](/Users/josema/Documents/financial-risk-intelligence-platform/docs/alerts.md)
-- [Project Decisions](/Users/josema/Documents/financial-risk-intelligence-platform/docs/project_decisions.md)
-- [Interview Guide](/Users/josema/Documents/financial-risk-intelligence-platform/docs/interview_guide.md)
-- [Demo Script](/Users/josema/Documents/financial-risk-intelligence-platform/docs/demo_script.md)
-- [Assets Guide](/Users/josema/Documents/financial-risk-intelligence-platform/docs/assets/README.md)
+- `docs/architecture.md`
+- `docs/modeling.md`
+- `docs/api.md`
+- `docs/dashboard.md`
+- `docs/alerts.md`
+- `docs/project_decisions.md`
+- `docs/interview_guide.md`
+- `docs/demo_script.md`
+- `docs/screenshots_checklist.md`
+- `docs/release_notes_v1.md`
+- `docs/assets/README.md`
