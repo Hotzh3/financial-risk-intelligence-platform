@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -32,7 +33,10 @@ class PredictionService:
     def _build_alert_engine(self) -> AlertEngine:
         alert_cfg = self.config.get("alerts", {})
         thresholds = alert_cfg.get("severity_thresholds", {})
-        storage_path = alert_cfg.get("storage_path", "reports/alerts.jsonl")
+        storage_path = os.getenv(
+            "ALERT_STORAGE_PATH",
+            alert_cfg.get("storage_path", "reports/alerts.jsonl"),
+        )
         return AlertEngine(rules=AlertRules(thresholds=thresholds), storage=AlertStorage(storage_path))
 
     @property
@@ -122,4 +126,3 @@ class PredictionService:
 
     def get_alerts(self, limit: int = 20) -> list[dict[str, Any]]:
         return [alert.model_dump() for alert in self.alert_engine.recent_alerts(limit=limit)]
-

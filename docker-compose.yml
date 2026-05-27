@@ -1,0 +1,24 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./reports:/app/reports
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m streamlit run dashboard/app.py --server.address=0.0.0.0 --server.port=8501
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./reports:/app/reports
+    environment:
+      API_BASE_URL: http://api:8000
+    depends_on:
+      - api

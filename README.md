@@ -363,6 +363,67 @@ The dashboard includes:
 - Recent alerts table from `GET /alerts`
 - Sample alert generation via `POST /alerts/evaluate`
 
+## Phase 6 Local Production Readiness
+
+Phase 6 adds local production-readiness tooling so the platform is easier to run,
+test, and demo with consistent commands.
+
+### Run Locally With Make
+
+Install dependencies:
+
+```bash
+make install
+```
+
+Run API:
+
+```bash
+make api
+```
+
+Run dashboard:
+
+```bash
+make dashboard
+```
+
+Run tests:
+
+```bash
+make test
+```
+
+### Run With Docker Compose
+
+Build/start services:
+
+```bash
+make docker-up
+```
+
+Stop services:
+
+```bash
+make docker-down
+```
+
+View logs:
+
+```bash
+make docker-logs
+```
+
+The dashboard container uses:
+
+- `API_BASE_URL=http://api:8000`
+
+### Local URLs
+
+- API: `http://127.0.0.1:8000`
+- Dashboard: `http://127.0.0.1:8501`
+- API docs: `http://127.0.0.1:8000/docs`
+
 ## Screenshots / Demo
 
 Dedicated screenshot and demo notes live in [`docs/screenshots/`](docs/screenshots/).
