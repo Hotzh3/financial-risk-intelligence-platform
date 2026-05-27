@@ -16,7 +16,7 @@ Generated exploratory analysis figures currently live in `reports/` and can also
 1. Start the API:
 
    ```bash
-   uvicorn api.main:app --reload
+   python -m uvicorn src.api.main:app --reload
    ```
 
 2. Open the API docs:
@@ -28,7 +28,7 @@ Generated exploratory analysis figures currently live in `reports/` and can also
 3. Start the dashboard:
 
    ```bash
-   streamlit run dashboard/app.py
+   python -m streamlit run dashboard/app.py
    ```
 
 4. Capture screenshots and save them in this directory with clear names.

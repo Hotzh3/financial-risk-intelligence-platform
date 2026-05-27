@@ -1,38 +1,32 @@
-"""Tests for API-side feature assembly before model inference."""
+"""Tests for inference-side feature alignment before model prediction."""
 
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 
-from api.routers.predictions import FEATURE_ORDER, compute_features
-from api.schemas.models import TransactionInput
+from src.models.predict import _prepare_input
 
 
-def test_compute_features_matches_expected_shape_and_column_order() -> None:
-    """Runtime feature assembly should preserve the trained feature order."""
-    tx = TransactionInput(
-        TransactionAmt=100.25,
-        ProductCD=1,
-        card1=1234,
-        card2=111.0,
-        card3=150.0,
-        card5=226.0,
-        card4=1,
-        card6=1,
-        hour=3,
-        V45=1.0,
-        V86=2.0,
-        V87=3.0,
-        V44=4.0,
-        V52=5.0,
+def test_prepare_input_matches_expected_shape_and_column_order() -> None:
+    """Inference input should align to training feature order with NaN fill for missing columns."""
+    feature_columns = ["TransactionAmt", "ProductCD", "card1", "V45", "V86", "V87"]
+    payload = pd.DataFrame(
+        [
+            {
+                "TransactionAmt": 100.25,
+                "ProductCD": "W",
+                "card1": 1234,
+                "V45": 1.0,
+            }
+        ]
     )
 
-    features = compute_features(tx)
+    aligned = _prepare_input(payload, feature_columns)
 
-    assert features.shape == (1, len(FEATURE_ORDER))
-    assert features.columns.tolist() == FEATURE_ORDER
-    assert features.loc[0, "TransactionAmt"] == 100.25
-    assert np.isclose(features.loc[0, "log_amount"], np.log1p(100.25))
-    assert features.loc[0, "amount_cents"] == 0.25
-    assert features.loc[0, "is_round_amount"] == 0
-    assert features.loc[0, "is_night"] == 1
+    assert aligned.shape == (1, len(feature_columns))
+    assert aligned.columns.tolist() == feature_columns
+    assert aligned.loc[0, "TransactionAmt"] == 100.25
+    assert aligned.loc[0, "ProductCD"] == "W"
+    assert np.isnan(aligned.loc[0, "V86"])
+    assert np.isnan(aligned.loc[0, "V87"])
