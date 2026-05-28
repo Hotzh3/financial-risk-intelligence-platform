@@ -1,31 +1,55 @@
 # Release Notes v1.0
 
-## Summary
-Version 1.0 delivers a local, end-to-end Financial Risk Intelligence Platform for fraud-risk scoring and monitoring.
+## Version
+- `v1.0.0` (portfolio release)
 
-## Included in v1.0
+## What Is Included
 
-- Data pipeline: loading, cleaning, and EDA-ready workflow
-- Feature engineering: deterministic, leak-safe feature table build
-- Model: reproducible sklearn baseline with threshold reporting
-- API: FastAPI endpoints for health, metadata, predictions, and alerts
-- Dashboard: Streamlit interface for scoring, metrics, thresholds, and alerts
-- Alerts: rule-based severity/reason/action generation with JSONL storage
-- Local readiness: Dockerfile, Docker Compose, Makefile, `.env.example`
-- CI: GitHub Actions pytest execution
-- Documentation: architecture, modeling, API, dashboard, alerts, interview guide, demo materials
+- Data loading, cleaning, and EDA-ready workflow
+- Leak-safe feature engineering pipeline
+- Reproducible sklearn modeling pipeline and metrics artifacts
+- Threshold trade-off reporting (`reports/threshold_report.json`)
+- FastAPI prediction service (`/health`, `/model/metadata`, `/predict`, `/predict/batch`, `/alerts`, `/alerts/evaluate`)
+- Streamlit monitoring dashboard for operations and scoring
+- Rule-based alert engine with local JSONL persistence
+- Local production-readiness assets: Dockerfile, Docker Compose, Makefile, `.env.example`
+- CI workflow running `pytest -q`
+- Portfolio/interview documentation package
+
+## How To Run
+
+```bash
+make install
+make test
+make api
+make dashboard
+```
+
+Docker option:
+
+```bash
+make docker-up
+make docker-down
+```
+
+## What Was Validated
+
+- `pytest` test suite passes locally
+- Docker Compose configuration is valid (`docker compose config`)
+- Make targets for setup/test/run are documented and available
+- Git ignore boundaries are in place for secrets/data/artifacts/logs
 
 ## Known Limitations
 
 - Local deployment only (no cloud deployment in scope)
 - No authentication/authorization
-- No managed database or distributed storage
+- No managed production database
 - No real-time streaming pipeline
-- No external notification channels enabled by default
+- No external paid services or outbound alert channels enabled by default
 
-## Next Improvements
+## Future Work
 
-- Add probability calibration and cost-sensitive threshold recommendations
-- Expand temporal validation and drift analysis
-- Add production security and observability hardening when deployment scope expands
-- Evolve persistence beyond JSONL for multi-user operational workflows
+- Probability calibration and cost-sensitive threshold optimization
+- Enhanced temporal validation and drift monitoring
+- Security hardening and observability for production deployment scope
+- Managed persistence beyond JSONL for multi-user operations
