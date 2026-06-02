@@ -21,6 +21,17 @@ from src.api.services import PredictionService
 router = APIRouter()
 
 
+@router.get("/")
+def root() -> dict[str, str]:
+    return {
+        "service": "financial-risk-intelligence-api",
+        "docs_url": "/docs",
+        "health_url": "/health",
+        "model_metadata_url": "/model/metadata",
+        "dashboard_url": "http://127.0.0.1:8501",
+    }
+
+
 @router.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     return HealthResponse(status="ok", service="financial-risk-intelligence-api")
@@ -87,4 +98,3 @@ def evaluate_alert(
     except RuntimeError as error:
         raise HTTPException(status_code=500, detail=str(error)) from error
     return AlertResponse(**payload)
-
