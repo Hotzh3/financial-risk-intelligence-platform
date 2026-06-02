@@ -8,6 +8,58 @@ End-to-end fraud risk intelligence platform for portfolio and interview use. It 
 
 This project shows practical ML engineering beyond notebooks: model training + inference + API + dashboard + alerting + Docker + CI in one clean repository.
 
+## Demo Preview
+
+### Dashboard Overview
+
+![Dashboard overview](docs/assets/dashboard_overview.png)
+
+High-level operations view with API status, model metadata, alert counts, and the main fraud-risk workflow.
+
+### Single Prediction
+
+![Single prediction result](docs/assets/single_prediction_result.png)
+
+Shows the scoring form and the returned risk score, predicted label, and severity for one transaction.
+
+### Alert Engine
+
+![Alert engine](docs/assets/alert_engine.png)
+
+Illustrates how model output is converted into analyst-friendly alerts with reason codes and recommended actions.
+
+### Model Metrics
+
+![Model metrics](docs/assets/model_metrics.png)
+
+Summarizes the fraud-focused evaluation metrics used to judge model quality under class imbalance.
+
+### Threshold Report
+
+![Threshold report](docs/assets/threshold_report.png)
+
+Shows how different thresholds trade off recall, precision, and review volume for operational decision-making.
+
+### API Docs
+
+![API docs](docs/assets/api_docs.png)
+
+FastAPI documentation for the health, metadata, prediction, and alert endpoints.
+
+## Developer Experience
+
+### Local Demo Terminal
+
+![Demo terminal](docs/assets/demo_terminal.png)
+
+One-command local demo flow that starts the API and dashboard together from a single terminal.
+
+### API Root Response
+
+![API root response](docs/assets/api_root_response.png)
+
+Helpful landing response that points viewers to the docs, health check, metadata, and dashboard.
+
 ## Architecture
 
 ```text
@@ -22,28 +74,6 @@ Raw Transactions
 ```
 
 Docker Compose runs API + dashboard together for local demo usage.
-
-## Demo Preview / Screenshots
-
-No screenshots are committed yet in `docs/assets/`. Add them manually using [docs/screenshots_checklist.md](/Users/josema/Documents/financial-risk-intelligence-platform/docs/screenshots_checklist.md).
-
-Expected screenshot files:
-
-- `docs/assets/dashboard_overview.png`
-- `docs/assets/api_docs.png`
-- `docs/assets/alert_engine.png`
-- `docs/assets/model_metrics.png`
-- `docs/assets/docker_commands_terminal.png`
-
-Optional embed block (activate once files exist):
-
-```md
-![Dashboard Overview](docs/assets/dashboard_overview.png)
-![API Docs](docs/assets/api_docs.png)
-![Alert Engine](docs/assets/alert_engine.png)
-![Model Metrics](docs/assets/model_metrics.png)
-![Docker Commands](docs/assets/docker_commands_terminal.png)
-```
 
 ## Key Features
 
