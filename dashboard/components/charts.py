@@ -32,4 +32,4 @@ def render_threshold_rows(threshold_rows: list[dict]) -> None:
         "alerts_per_10k",
     ]
     columns = [col for col in preferred_columns if col in frame.columns]
-    st.dataframe(frame[columns] if columns else frame, use_container_width=True, hide_index=True)
+    st.dataframe(frame[columns] if columns else frame, width="stretch", hide_index=True)
