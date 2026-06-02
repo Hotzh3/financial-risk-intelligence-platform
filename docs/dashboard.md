@@ -20,6 +20,8 @@ export API_BASE_URL=http://127.0.0.1:8000
 
 ## Panels
 
+- Sidebar: project context, API status, quick links, and demo steps
+- Operational Snapshot: KPI row for API status, model, feature count, threshold, alerts count
 - API Health: confirms API availability and configured base URL
 - Model Metadata: model name, target, feature count, threshold, artifact checks
 - Single Prediction: form-based scoring with severity output
