@@ -18,6 +18,19 @@ def test_health_returns_ok() -> None:
     }
 
 
+def test_root_returns_demo_guidance() -> None:
+    with TestClient(app) as client:
+        response = client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {
+        "service": "financial-risk-intelligence-api",
+        "docs_url": "/docs",
+        "health_url": "/health",
+        "model_metadata_url": "/model/metadata",
+        "dashboard_url": "http://127.0.0.1:8501",
+    }
+
+
 def test_model_metadata_returns_payload() -> None:
     with TestClient(app) as client:
         response = client.get("/model/metadata")

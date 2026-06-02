@@ -1,49 +1,40 @@
 # Demo Script (3-5 Minutes)
 
-## 0) Setup (15s)
+## Primary Demo Path
+
+Start the full demo from one terminal:
+
+```bash
+make demo
+```
+
+Open the dashboard at `http://127.0.0.1:8501`.
+
 Say: "This is a local, production-inspired fraud risk platform. I’ll show model serving, monitoring, and alerting in under five minutes."
 
-Run:
+## Presentation Flow
 
-```bash
-make help
-make test
-```
+### 1) Open the dashboard
 
-## 1) Start API (30s)
-Say: "First I start the FastAPI prediction service."
+Say: "This dashboard is the operations view for the fraud-risk workflow."
 
-```bash
-make api
-```
+Highlight:
+- `How this demo works`
+- `Operational Snapshot`
+- API status and model threshold
 
-Open: `http://127.0.0.1:8000/docs`
+### 2) Explain how the demo works
 
-Click/Highlight:
-- `GET /health`
-- `GET /model/metadata`
-- `POST /predict`
-- `POST /alerts/evaluate`
+Say: "The model was trained offline on the IEEE-CIS Fraud Detection dataset, then served through FastAPI."
 
-## 2) Start Dashboard (30s)
-Say: "Now I open the operations dashboard that consumes these endpoints."
+Highlight:
+- Local portfolio demo
+- Dashboard sends transactions to the API
+- Alert engine adds operational context with reason codes and actions
 
-In a second terminal:
+### 3) Run a prediction
 
-```bash
-make dashboard
-```
-
-Open: `http://127.0.0.1:8501`
-
-Click/Highlight:
-- API Health panel
-- Model Metadata panel
-
-## 3) Run Prediction (45s)
-Say: "I’ll score one transaction and review risk output."
-
-Use Swagger or terminal:
+Use the dashboard form or Swagger:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/predict \
@@ -52,12 +43,23 @@ curl -X POST http://127.0.0.1:8000/predict \
 ```
 
 What to say:
-- "`risk_score` is the model probability-style risk signal."
-- "`predicted_label` is thresholded output."
-- "`severity` maps risk to operational triage bands."
+- `risk_score` is the model-estimated fraud risk score.
+- `predicted_label` is thresholded output.
+- `severity` maps risk into low / medium / high / critical.
 
-## 4) Generate Alert (45s)
-Say: "Next I convert prediction output into an analyst-facing alert."
+### 4) Explain why the result happened
+
+Open the `Why this result?` expander in the dashboard.
+
+What to say:
+- The score is compared against the configured threshold.
+- `predicted_label = 1` means the model flagged potential fraud.
+- `predicted_label = 0` means the model did not flag fraud.
+- The decision combines model output plus configured thresholds.
+
+### 5) Generate an alert
+
+Click `Generate Alert From Sample Transaction` or call:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/alerts/evaluate \
@@ -72,28 +74,47 @@ curl 'http://127.0.0.1:8000/alerts?limit=5'
 ```
 
 What to say:
-- "Each alert includes severity, reason codes, and recommended action."
+- Alerts are not raw model predictions only.
+- They include `reason_codes`, `recommended_action`, and `severity`.
+- Reason codes are rule-based so the result is easier to review.
 
-## 5) Show Metrics + Threshold Trade-Offs (45s)
-Say: "For fraud, accuracy is secondary to precision/recall and operational review volume."
+### 6) Explain metrics and thresholds
 
-In dashboard:
-- Model Metrics panel
-- Threshold Report panel
+In the dashboard, open:
+- `How to read these metrics`
+- `How to read threshold trade-offs`
 
-Reference:
-- `reports/model_metrics.json`
-- `reports/threshold_report.json`
+What to say:
+- Recall is about catching fraud cases.
+- Precision is about reducing false positives.
+- Lower thresholds create more alerts and higher recall.
+- Higher thresholds create fewer alerts and potentially higher precision.
+- Threshold choice is a business decision, not only a model decision.
 
-## 6) Local Production Readiness (30s)
-Say: "The project is reproducible with Make targets, Docker Compose, and CI tests."
+### 7) Show API docs
 
-```bash
-make docker-up
-make docker-down
-```
+Open `http://127.0.0.1:8000/docs`
+
+Highlight:
+- `GET /health`
+- `GET /model/metadata`
+- `POST /predict`
+- `POST /alerts/evaluate`
 
 ## Fallbacks
+
+If you want the manual local path instead:
+
+```bash
+make api
+make dashboard
+```
+
+If Docker is preferred:
+
+```bash
+make demo-docker
+```
 
 If API fails:
 - run `make install`
@@ -104,8 +125,6 @@ If dashboard fails:
 - set `API_BASE_URL=http://127.0.0.1:8000`
 - re-run `make dashboard`
 
-If Docker fails:
-- continue demo via local `make api` + `make dashboard`
+## End the Demo
 
-## End the Demo (15s)
-Say: "This project demonstrates end-to-end ML engineering: data pipeline, reproducible modeling, API serving, operational dashboard, alerting logic, and developer-ready local deployment."
+Say: "This project demonstrates end-to-end ML engineering: data pipeline, reproducible modeling, API serving, an operational dashboard, alerting logic, and developer-ready local deployment."

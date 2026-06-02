@@ -59,7 +59,32 @@ Optional embed block (activate once files exist):
 
 ## Quickstart
 
-### Local
+### Run the full demo with one command
+
+#### Local
+
+```bash
+make demo
+```
+
+`Ctrl+C` stops both the FastAPI and Streamlit processes cleanly.
+
+#### Docker
+
+```bash
+make demo-docker
+```
+
+Docker Compose runs the API and dashboard together in one command.
+
+#### Fallback
+
+```bash
+make api
+make dashboard
+```
+
+### Manual Local Setup
 
 ```bash
 make install
